@@ -1,8 +1,13 @@
 /* Huruf — when does Ramadan start?
-   Uses the browser's Umm al-Qura (Saudi) Islamic calendar. The real start depends on the
-   moon sighting your community follows, so Setup lets you type your own date. */
+   An Islamic day begins at sunset, so Ramadan "starts" the evening before the first fast:
+   that night is the first taraweeh. Known dates are looked up; later years fall back to the
+   browser's Umm al-Qura calendar. Setup keeps an optional override for local moon sighting. */
 (function (Q) {
   'use strict';
+
+  // First day of fasting (1 Ramadan). Sources: Umm al-Qura calendar and FCNA/ISNA
+  // astronomical projections both give Monday 8 Feb 2027; first taraweeh Sunday 7 Feb.
+  const KNOWN_FIRST_FAST = { 1448: '2027-02-08' };
 
   let fmt = null;
   try {
@@ -16,31 +21,36 @@
     return { y: parseInt(p.year, 10), m: parseInt(p.month, 10), d: parseInt(p.day, 10) };
   }
 
+  /* First fast of the next (or current) Ramadan */
+  function firstFast(today) {
+    for (const [year, key] of Object.entries(KNOWN_FIRST_FAST)) {
+      const d = Q.parseDay(key);
+      if (Q.daysBetween(today, d) > -30) return { fast: d, year: Number(year), source: 'known' };
+    }
+    if (fmt) {
+      for (let i = -30; i < 400; i++) {
+        const d = Q.addDays(today, i);
+        const x = hijri(d);
+        if (x.m === 9 && x.d === 1 && Q.daysBetween(today, d) > -30) return { fast: d, year: x.y, source: 'calendar' };
+      }
+    }
+    return { fast: Q.parseDay('2027-02-08'), year: 1448, source: 'known' };
+  }
+
+  /* { night, fast, days (until the first night), phase: 'before' | 'tonight' | 'during', dayOf, year } */
   Q.ramadan = function () {
     const today = Q.addDays(new Date(), 0);
     const custom = Q.store.state.settings.ramadan;
-
-    if (custom && /^\d{4}-\d{2}-\d{2}$/.test(custom)) {
-      const start = Q.parseDay(custom);
-      const days = Q.daysBetween(today, start);
-      if (days > -30) {
-        return { start, days, inRamadan: days <= 0, dayOf: 1 - days, year: null, source: 'custom' };
-      }
+    let info;
+    if (custom && /^\d{4}-\d{2}-\d{2}$/.test(custom) && Q.daysBetween(today, Q.parseDay(custom)) > -30) {
+      info = { fast: Q.parseDay(custom), year: null, source: 'custom' };
+    } else {
+      info = firstFast(today);
     }
-
-    if (fmt) {
-      const h = hijri(today);
-      if (h.m === 9) {
-        return { start: Q.addDays(today, 1 - h.d), days: 0, inRamadan: true, dayOf: h.d, year: h.y, source: 'calendar' };
-      }
-      for (let i = 1; i < 400; i++) {
-        const d = Q.addDays(today, i);
-        const x = hijri(d);
-        if (x.m === 9 && x.d === 1) return { start: d, days: i, inRamadan: false, year: x.y, source: 'calendar' };
-      }
-    }
-    // Fallback: Ramadan 1448 is expected to begin around 8 February 2027
-    const start = new Date(2027, 1, 8, 12);
-    return { start, days: Q.daysBetween(today, start), inRamadan: false, year: 1448, source: 'fallback' };
+    const night = Q.addDays(info.fast, -1);
+    const days = Q.daysBetween(today, night);
+    const dayOf = Q.daysBetween(info.fast, today) + 1;
+    const phase = days > 0 ? 'before' : days === 0 ? 'tonight' : 'during';
+    return Object.assign(info, { night, days: Math.max(0, days), dayOf, phase, inRamadan: phase === 'during', start: night });
   };
 })(window.Q = window.Q || {});

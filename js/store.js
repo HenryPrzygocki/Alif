@@ -13,7 +13,7 @@
       settings: { goal: 150, font: 'hafs', theme: 'system', ramadan: '', iqraBook: 1, iqraPage: '' },
       practice: {
         mode: 'sounds', groups: Q.GROUPS.map(g => g.id), marks: ['a'], rowLen: 4, words: 2,
-        rounds: 12, focusWeak: true, lookalikes: true, showKeys: true,
+        rounds: 12, focusWeak: true, lookalikes: true, showKeys: true, hideSetup: false,
       },
       letters: {},     // id -> { n, w, last, hist }
       modes: {},       // mode -> { n, w }
@@ -83,19 +83,23 @@
       store.save();
     },
 
-    /* One "Spot the letter" question */
-    recordQuiz({ target, picked, ms }) {
-      const wrong = target !== picked;
+    /* One quiz question checked by the site.
+       A wrong vowel on the right letter counts against the syllable, not the letter. */
+    recordQuiz({ mode = 'quiz', target, picked, vowel, pickedVowel, ms }) {
+      const letterWrong = target !== picked;
+      const wrong = letterWrong || (vowel && vowel !== pickedVowel);
       const d = store._day();
-      store._letter(target, wrong);
-      store._bump(S.ml, 'quiz:' + target, wrong);
-      const m = S.modes.quiz || (S.modes.quiz = { n: 0, w: 0 });
+      store._letter(target, letterWrong);
+      store._bump(S.ml, mode + ':' + target, wrong);
+      if (vowel) store._bump(S.syl, target + ':' + vowel, wrong);
+      const m = S.modes[mode] || (S.modes[mode] = { n: 0, w: 0 });
       m.n++; if (wrong) m.w++;
       d.n++; if (wrong) d.w++;
       d.rounds++;
       d.ms += Math.min(ms || 0, 60000);
-      if (wrong) S.conf[target + '>' + picked] = (S.conf[target + '>' + picked] || 0) + 1;
+      if (letterWrong) S.conf[target + '>' + picked] = (S.conf[target + '>' + picked] || 0) + 1;
       store.save();
+      return wrong;
     },
 
     recordSession(sess) {

@@ -1,4 +1,6 @@
-/* Huruf — Practice: read a row aloud, reveal, mark what you missed. */
+/* Huruf — Practice.
+   Read-aloud modes: you say it, reveal, and mark what you missed.
+   Quiz modes: you pick an answer and the site checks it. */
 (function (Q) {
   'use strict';
   const { h } = Q;
@@ -15,33 +17,44 @@
   Q.views.practice = function (root) {
     const store = Q.store;
     const cfg = store.state.practice;
+    if (!Q.MODE[cfg.mode]) cfg.mode = 'sounds';
     let session = null;
     let round = null;
     let only = Q.practiceOnly || null;   // temporary letter list (e.g. "practise my weakest")
     Q.practiceOnly = null;
     let advanceTimer = null;
 
+    const mode = () => Q.MODE[cfg.mode];
+    const isQuiz = () => mode().kind === 'quiz';
+
     /* ---------------- layout ---------------- */
-    const setupEl = h('aside', { class: 'setup card' });
+    const setupEl = h('aside', { class: 'setup card', id: 'practice-options' });
     const stageTop = h('div', { class: 'stage-top' });
     const stageEl = h('div', { class: 'frame stage' });
     const actionsEl = h('div', { class: 'stage-actions' });
-    const page = h('div', { class: 'page' },
+    const layout = h('div', { class: 'practice' + (cfg.hideSetup ? ' focus' : '') }, setupEl, h('div', { class: 'stage-wrap' }, stageTop, stageEl, actionsEl));
+    root.append(h('div', { class: 'page' },
       h('div', { class: 'page-head' },
         h('div', null,
           h('h1', null, 'Practice'),
-          h('p', null, 'Read the row out loud from right to left. Then reveal the answers and click anything you got wrong. Be honest; it only helps you.'))),
-      h('div', { class: 'practice' }, setupEl, h('div', { class: 'stage-wrap' }, stageTop, stageEl, actionsEl)));
-    root.append(page);
+          h('p', null, 'Read-aloud modes: say each letter from right to left, reveal, and click what you missed. Quiz modes: pick the answer and the site checks it.'))),
+      layout));
+
+    function toggleSetup() {
+      store.setPractice('hideSetup', !cfg.hideSetup);
+      layout.classList.toggle('focus', cfg.hideSetup);
+      if (session && session.over) renderSummaryTop(); else if (round) renderTop();
+    }
 
     /* ---------------- pool & generation ---------------- */
     function pool() {
       let ids = only && only.length ? only.slice()
         : Q.LETTERS.filter(l => cfg.groups.includes(l.group)).map(l => l.id);
-      if (cfg.mode === 'sounds' || cfg.mode === 'joined') ids = ids.filter(id => !Q.L[id].noSound);
+      if (mode().sound) ids = ids.filter(id => !Q.L[id].noSound);
       return ids;
     }
     const weightOf = id => cfg.focusWeak ? store.weight(id) : 1;
+    const marks = () => cfg.marks && cfg.marks.length ? cfg.marks : ['a'];
 
     function nextLetter(ids, prev, avoid = []) {
       if (cfg.lookalikes && prev && Math.random() < 0.35) {
@@ -51,7 +64,6 @@
       const choices = ids.filter(x => x !== prev && !avoid.includes(x));
       return Q.weightedPick(choices.length ? choices : ids, weightOf);
     }
-    function marks() { return cfg.marks && cfg.marks.length ? cfg.marks : ['a']; }
 
     function makeRow() {
       const ids = pool();
@@ -60,9 +72,8 @@
       for (let i = 0; i < cfg.rowLen; i++) {
         const id = nextLetter(ids, prev, units.slice(-2).map(u => u.letter));
         prev = id;
-        if (cfg.mode === 'names') {
-          units.push({ letter: id, text: Q.L[id].ch, wrong: false });
-        } else {
+        if (cfg.mode === 'names') units.push({ letter: id, text: Q.L[id].ch, wrong: false });
+        else {
           const v = Q.pick(marks());
           const syl = Q.syllable(id, v);
           units.push({ letter: id, vowel: v, text: syl.text, sound: syl.sound, wrong: false });
@@ -83,8 +94,7 @@
           if (!cand.length) cand = ids;
           const id = nextLetter(cand, prev);
           prev = id;
-          // vowels: tanwīn only on the last letter of a word
-          let vs = marks();
+          let vs = marks();                       // tanwīn only on the last letter of a word
           if (i < len - 1) { const inner = vs.filter(v => v.length === 1); vs = inner.length ? inner : ['a']; }
           const v = Q.pick(vs);
           const syl = Q.syllable(id, v);
@@ -95,22 +105,55 @@
       return { kind: 'joined', words, units: words.flat() };
     }
 
+    /* Quiz options: the right answer plus look-alikes, sound-alikes and other vowels */
+    function syllableOptions(target, v) {
+      const opts = [];
+      const seenKey = new Set(), seenSound = new Set();
+      const add = (id, vv) => {
+        if (opts.length >= 4 || !Q.L[id] || Q.L[id].noSound) return;
+        const sy = Q.syllable(id, vv);
+        if (seenKey.has(id + ':' + vv) || seenSound.has(sy.sound)) return;
+        seenKey.add(id + ':' + vv); seenSound.add(sy.sound);
+        opts.push({ letter: id, vowel: vv, text: sy.text, sound: sy.sound });
+      };
+      add(target, v);
+      const l = Q.L[target];
+      const like = Q.shuffle(l.like || []), soundLike = Q.shuffle(l.soundLike || []);
+      const otherVowels = Q.shuffle(marks().filter(x => x !== v));
+      if (like[0]) add(like[0], v);
+      if (otherVowels[0]) add(target, otherVowels[0]);
+      if (soundLike[0]) add(soundLike[0], v);
+      like.slice(1).forEach(id => add(id, v));
+      soundLike.slice(1).forEach(id => add(id, v));
+      Q.shuffle(Q.LETTERS.map(x => x.id)).forEach(id => add(id, v));
+      return Q.shuffle(opts);
+    }
+
     function makeQuiz() {
       const ids = pool();
       const target = Q.weightedPick(ids, weightOf);
       const l = Q.L[target];
-      const dir = Math.random() < 0.5 ? 'toLetter' : 'toName';
-      const near = [...new Set([...(l.like || []), ...(l.soundLike || [])])].filter(x => x !== target);
-      const opts = new Set([target]);
-      Q.shuffle(near).forEach(x => { if (opts.size < 4) opts.add(x); });
-      Q.shuffle(Q.LETTERS.map(x => x.id)).forEach(x => { if (opts.size < 4) opts.add(x); });
-      return { kind: 'quiz', target, dir, options: Q.shuffle([...opts]), picked: null };
+      if (cfg.mode === 'quiz') {
+        const near = [...new Set([...(l.like || []), ...(l.soundLike || [])])].filter(x => x !== target);
+        const set = new Set([target]);
+        Q.shuffle(near).forEach(x => { if (set.size < 4) set.add(x); });
+        Q.shuffle(Q.LETTERS.map(x => x.id)).forEach(x => { if (set.size < 4) set.add(x); });
+        const dir = Math.random() < 0.5 ? 'toLetter' : 'toName';
+        return { kind: 'quiz', target, dir, options: Q.shuffle([...set]).map(id => ({ letter: id, text: Q.L[id].ch, label: Q.L[id].name })), picked: null };
+      }
+      const v = Q.pick(marks());
+      const sy = Q.syllable(target, v);
+      return {
+        kind: 'quiz', target, vowel: v, text: sy.text, sound: sy.sound,
+        dir: cfg.mode === 'q-sound' ? 'toSound' : 'toGlyph',
+        options: syllableOptions(target, v), picked: null,
+      };
     }
 
     /* ---------------- session flow ---------------- */
     function startSession() {
       finishSession(false);
-      session = { mode: cfg.mode, total: cfg.rounds, done: [], n: 0, w: 0, ms: 0, missed: new Map() };
+      session = { mode: cfg.mode, total: cfg.rounds, done: [], n: 0, w: 0, ms: 0, rMs: 0, rUnits: 0, streak: 0, bestStreak: 0, missed: new Map() };
       newRound();
     }
     function finishSession(show) {
@@ -125,7 +168,7 @@
     function newRound() {
       clearTimeout(advanceTimer);
       if (!pool().length) { round = null; renderEmpty(); return; }
-      round = cfg.mode === 'quiz' ? makeQuiz() : cfg.mode === 'joined' ? makeJoined() : makeRow();
+      round = isQuiz() ? makeQuiz() : cfg.mode === 'joined' ? makeJoined() : makeRow();
       round.shownAt = performance.now();
       round.revealed = false;
       renderRound();
@@ -150,6 +193,7 @@
       });
       const wrong = round.units.filter(u => u.wrong);
       session.n += round.units.length; session.w += wrong.length; session.ms += Math.min(activeMs, 90000);
+      if (round.revealMs < 60000) { session.rMs += round.revealMs; session.rUnits += round.units.length; }
       wrong.forEach(u => session.missed.set(u.letter, (session.missed.get(u.letter) || 0) + 1));
       session.done.push(wrong.length ? 'miss' : 'done');
       advance();
@@ -169,17 +213,25 @@
       renderRound();
     }
 
-    function answerQuiz(id) {
+    function answerQuiz(i) {
       if (!round || round.kind !== 'quiz' || round.picked) return;
-      round.picked = id;
+      const o = round.options[i];
+      if (!o) return;
+      round.picked = o;
       const ms = performance.now() - round.shownAt;
-      store.recordQuiz({ target: round.target, picked: id, ms });
-      const wrong = id !== round.target;
-      session.n++; if (wrong) { session.w++; session.missed.set(round.target, (session.missed.get(round.target) || 0) + 1); }
+      const wrong = store.recordQuiz({ mode: cfg.mode, target: round.target, picked: o.letter, vowel: round.vowel, pickedVowel: o.vowel, ms });
+      round.wrong = wrong;
+      session.n++;
       session.ms += Math.min(ms, 60000);
+      if (wrong) {
+        session.w++; session.streak = 0;
+        session.missed.set(round.target, (session.missed.get(round.target) || 0) + 1);
+      } else {
+        session.streak++; session.bestStreak = Math.max(session.bestStreak, session.streak);
+      }
       session.done.push(wrong ? 'miss' : 'done');
       renderRound();
-      if (!wrong) advanceTimer = setTimeout(advance, 750);
+      if (!wrong) advanceTimer = setTimeout(advance, 700);
     }
 
     /* ---------------- rendering ---------------- */
@@ -191,8 +243,13 @@
       return '72px';
     }
 
+    function optionsButton() {
+      return h('button', { class: 'btn ghost sm', type: 'button', 'aria-expanded': String(!cfg.hideSetup), 'aria-controls': 'practice-options', onclick: toggleSetup },
+        cfg.hideSetup ? 'Show options' : 'Hide options', h('kbd', null, 'O'));
+    }
+
     function renderTop() {
-      const dots = h('div', { class: 'progress-dots', 'aria-label': 'Session progress' });
+      const dots = h('div', { class: 'progress-dots', 'aria-hidden': 'true' });
       for (let i = 0; i < session.total; i++) {
         const st = session.done[i];
         dots.append(h('i', { class: st || (i === session.done.length ? 'now' : '') }));
@@ -200,9 +257,14 @@
       const acc = session.n ? Q.pct(1 - session.w / session.n) : '–';
       stageTop.replaceChildren(
         h('div', { class: 'row' },
-          h('span', { class: 'eyebrow' }, Q.MODE[cfg.mode].label),
-          only ? h('span', { class: 'tag' }, 'Focused: ' + only.length + ' letters') : null),
-        h('div', { class: 'row' }, dots, h('span', { class: 'small muted num' }, `${Math.min(session.done.length + 1, session.total)} / ${session.total} · ${acc} right`)));
+          h('span', { class: 'eyebrow' }, mode().label),
+          h('span', { class: 'tag' + (isQuiz() ? ' auto' : '') }, isQuiz() ? 'Checked for you' : 'You mark yourself'),
+          only ? h('span', { class: 'tag' }, 'Focused: ' + only.map(id => Q.L[id].ch).join(' ')) : null),
+        h('div', { class: 'row' },
+          isQuiz() && session.streak >= 3 ? h('span', { class: 'tag streak' }, session.streak + ' in a row') : null,
+          dots,
+          h('span', { class: 'small muted num' }, `${Math.min(session.done.length + (round && round.kind === 'quiz' && round.picked ? 0 : 1), session.total)} / ${session.total} · ${acc} right`),
+          optionsButton()));
     }
 
     function answerLabel(u) {
@@ -226,7 +288,7 @@
           },
             round.units.length > 1 ? h('span', { class: 'idx' }, i + 1) : null,
             h('span', { class: 'glyph' }, u.text),
-            h('span', { class: 'ans' + (round.revealed ? '' : ' hide') }, answerLabel(u))));
+            h('span', { class: 'ans' + (round.revealed ? ' show' : ' hide') }, answerLabel(u))));
         });
         stageEl.replaceChildren(wrap);
       } else if (round.kind === 'joined') {
@@ -235,7 +297,7 @@
         round.words.forEach(word => {
           const start = k;
           const glyph = h('div', { class: 'glyph' }, word.map(u => h('span', { class: u.wrong ? 'wrong' : '' }, u.text)));
-          const syls = h('div', { class: 'syls' + (round.revealed ? '' : ' hide') },
+          const syls = h('div', { class: 'syls' + (round.revealed ? ' show' : ' hide') },
             word.map((u, j) => {
               const idx = start + j;
               return h('button', { class: 'syl' + (u.wrong ? ' wrong' : ''), type: 'button', tabindex: round.revealed ? 0 : -1, onclick: () => toggleUnit(idx) },
@@ -253,49 +315,77 @@
 
     function renderQuiz() {
       const l = Q.L[round.target];
-      const prompt = round.dir === 'toLetter'
-        ? h('div', { class: 'prompt' },
-            h('div', { class: 'eyebrow' }, 'Which letter is'),
-            h('div', { class: 'q' }, l.name + (l.alt ? ` (${l.alt})` : '')),
-            h('div', { class: 'muted' }, l.tr ? `sound: ${l.tr}` : 'the silent seat for hamza and long a'))
-        : h('div', { class: 'prompt' },
-            h('div', { class: 'eyebrow' }, 'What is this letter called?'),
-            h('div', { class: 'glyph' }, l.ch));
-      const opts = h('div', { class: 'options' });
-      round.options.forEach((id, i) => {
-        const o = Q.L[id];
-        let cls = 'option';
-        if (round.picked) {
-          if (id === round.target) cls += ' right';
-          else if (id === round.picked) cls += ' picked-wrong';
-        }
-        opts.append(h('button', { class: cls, type: 'button', onclick: () => answerQuiz(id) },
-          h('span', { class: 'idx' }, i + 1),
-          round.dir === 'toLetter' ? h('span', { class: 'ar' }, o.ch) : h('span', { class: 'nm' }, o.name)));
-      });
-      let fb = h('div', { class: 'feedback' });
-      if (round.picked) {
-        if (round.picked === round.target) fb = h('div', { class: 'feedback good' }, 'Right');
-        else {
-          const p = Q.L[round.picked];
-          fb = h('div', { class: 'feedback bad' }, `That was ${l.name} ${l.ch}. You picked ${p.name} ${p.ch}.`);
-        }
+      let prompt;
+      if (round.dir === 'toLetter') {
+        prompt = h('div', { class: 'prompt' },
+          h('div', { class: 'eyebrow' }, 'Which letter is'),
+          h('div', { class: 'q' }, l.name + (l.alt ? ` (${l.alt})` : '')),
+          h('div', { class: 'muted' }, l.tr ? `sound: ${l.tr}` : 'the silent seat for hamza and long a'));
+      } else if (round.dir === 'toName') {
+        prompt = h('div', { class: 'prompt' }, h('div', { class: 'eyebrow' }, 'What is this letter called?'), h('div', { class: 'glyph' }, l.ch));
+      } else if (round.dir === 'toSound') {
+        prompt = h('div', { class: 'prompt' }, h('div', { class: 'eyebrow' }, 'How does this sound?'), h('div', { class: 'glyph' }, round.text));
+      } else {
+        prompt = h('div', { class: 'prompt' },
+          h('div', { class: 'eyebrow' }, 'Which one is'),
+          h('div', { class: 'q translit' }, round.sound),
+          l.alt ? h('div', { class: 'muted' }, l.alt) : h('div', { class: 'muted' }, ' '));
       }
-      stageEl.replaceChildren(h('div', { class: 'quiz' }, prompt, opts, fb));
+      const glyphOptions = round.dir === 'toLetter' || round.dir === 'toGlyph';
+      const opts = h('div', { class: 'options' });
+      round.options.forEach((o, i) => {
+        let cls = 'option';
+        const isTarget = o.letter === round.target && (!round.vowel || o.vowel === round.vowel);
+        if (round.picked) {
+          if (isTarget) cls += ' right';
+          else if (o === round.picked) cls += ' picked-wrong';
+          else cls += ' dim';
+        }
+        opts.append(h('button', { class: cls, type: 'button', onclick: () => answerQuiz(i), disabled: !!round.picked && !isTarget && o !== round.picked },
+          h('span', { class: 'idx' }, i + 1),
+          glyphOptions ? h('span', { class: 'ar' }, o.text)
+            : round.dir === 'toSound' ? h('span', { class: 'nm translit' }, o.sound)
+              : h('span', { class: 'nm' }, o.label)));
+      });
+      stageEl.replaceChildren(h('div', { class: 'quiz' }, prompt, opts, feedback()));
+    }
+
+    function feedback() {
+      if (!round.picked) return h('div', { class: 'feedback' }, ' ');
+      const l = Q.L[round.target];
+      const p = round.picked;
+      if (!round.wrong) {
+        return h('div', { class: 'feedback good' }, 'Right', session.streak >= 3 ? ` · ${session.streak} in a row` : '');
+      }
+      const pl = Q.L[p.letter];
+      let msg;
+      if (cfg.mode === 'quiz') msg = [`That was ${l.name} `, h('span', { class: 'ar inline' }, l.ch), `. You picked ${pl.name} `, h('span', { class: 'ar inline' }, pl.ch), '.'];
+      else if (p.letter === round.target) {
+        msg = [h('span', { class: 'ar inline' }, round.text), ` is “${round.sound}”. Right letter, but check the vowel: `, h('span', { class: 'ar inline' }, p.text), ` is “${p.sound}”.`];
+      } else {
+        msg = [h('span', { class: 'ar inline' }, round.text), ` is “${round.sound}” (${l.name}). `, h('span', { class: 'ar inline' }, p.text), ` is “${p.sound}” (${pl.name}).`];
+      }
+      return h('div', { class: 'feedback bad' }, h('div', null, msg), h('div', { class: 'tip' }, Q.mixed(l.tip)));
     }
 
     function renderActions() {
       let main, hint;
       if (round.kind === 'quiz') {
         main = h('button', { class: 'btn primary lg', type: 'button', disabled: !round.picked, onclick: next }, 'Next', h('kbd', null, 'Space'));
-        hint = [h('span', null, h('kbd', { class: 'key' }, '1'), '–', h('kbd', { class: 'key' }, '4'), ' pick')];
+        hint = round.picked
+          ? [h('span', null, round.wrong ? 'Take a look, then press Space for the next one.' : 'Moving on…')]
+          : [h('span', null, 'Press ', h('kbd', { class: 'key' }, '1'), '–', h('kbd', { class: 'key' }, String(round.options.length)), ' or click an answer')];
       } else if (!round.revealed) {
         main = h('button', { class: 'btn primary lg', type: 'button', onclick: reveal }, 'Reveal', h('kbd', null, 'Space'));
-        hint = [h('span', null, 'Say each one out loud first, starting from the right.')];
+        hint = [h('span', null, 'Say each one out loud, starting from the right.')];
       } else {
         const wrongN = round.units.filter(u => u.wrong).length;
+        const secs = round.revealMs / 1000;
         main = h('button', { class: 'btn primary lg', type: 'button', onclick: next }, wrongN ? `Next · ${wrongN} wrong` : 'Next · all right', h('kbd', null, 'Space'));
-        hint = [h('span', null, 'Click a letter you missed, or press ', h('kbd', { class: 'key' }, '1'), '–', h('kbd', { class: 'key' }, String(Math.min(9, round.units.length))))];
+        hint = [
+          h('span', { class: 'tag', title: 'Time from showing the row to pressing Reveal' }, `${secs.toFixed(1)} s` + (round.units.length > 1 ? ` · ${(secs / round.units.length).toFixed(1)} s each` : '')),
+          h('span', null, 'Click what you missed, or press ', h('kbd', { class: 'key' }, '1'), '–', h('kbd', { class: 'key' }, String(Math.min(9, round.units.length)))),
+        ];
       }
       actionsEl.replaceChildren(h('div', { class: 'hint' }, hint),
         h('div', { class: 'row' },
@@ -303,66 +393,86 @@
           main));
     }
 
+    function renderSummaryTop() {
+      stageTop.replaceChildren(h('span', { class: 'eyebrow' }, 'Session done · ' + Q.MODE[session.mode].label), h('div', { class: 'row' }, optionsButton()));
+    }
+
     function renderSummary() {
+      session.over = true;
       const acc = session.n ? 1 - session.w / session.n : null;
       const missed = [...session.missed.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
-      stageTop.replaceChildren(h('span', { class: 'eyebrow' }, 'Session done'));
+      const avg = store.totals().secPer;
+      const mine = session.rUnits ? session.rMs / session.rUnits / 1000 : null;
+      renderSummaryTop();
       stageEl.style.removeProperty('--glyph-size');
       stageEl.replaceChildren(h('div', { class: 'summary' },
-        h('div', null, h('div', { class: 'big num' }, Q.pct(acc)), h('div', { class: 'muted' }, `${session.n} read · ${session.w} missed · ${Q.fmtDuration(session.ms)}`)),
+        h('div', null,
+          h('div', { class: 'big num' }, Q.pct(acc)),
+          h('div', { class: 'muted' }, `${session.n} answered · ${session.w} missed · ${Q.fmtDuration(session.ms)}`)),
+        h('div', { class: 'summary-facts' },
+          mine != null ? h('div', { class: 'stat' }, h('span', { class: 'v' }, mine.toFixed(1), h('small', null, 's')), h('span', { class: 'k' }, `per letter${avg != null ? ` · your average ${avg.toFixed(1)} s` : ''}`)) : null,
+          session.bestStreak ? h('div', { class: 'stat' }, h('span', { class: 'v' }, session.bestStreak), h('span', { class: 'k' }, 'best run in a row')) : null,
+          h('div', { class: 'stat' }, h('span', { class: 'v' }, Q.fmtInt(store.today().n)), h('span', { class: 'k' }, `today · goal ${store.state.settings.goal}`))),
         missed.length
-          ? h('div', { class: 'stack' }, h('div', { class: 'eyebrow' }, 'Missed this time'), h('div', { class: 'missed' }, missed.map(id => h('span', { title: Q.L[id].name }, Q.L[id].ch))))
+          ? h('div', { class: 'stack' }, h('div', { class: 'eyebrow' }, 'Missed this time'),
+            h('div', { class: 'missed' }, missed.map(id => {
+              const l = Q.L[id];
+              return h('span', { class: 'miss-chip' }, h('span', { class: 'ar' }, l.ch), h('b', null, l.name), h('span', null, l.id === 'alif' ? 'a' : l.tr));
+            })))
           : h('p', null, 'Nothing missed. Mā shāʾ Allāh.')));
-      actionsEl.replaceChildren(h('div', { class: 'hint' }, 'Your stats are saved.'),
+      actionsEl.replaceChildren(h('div', { class: 'hint' }, 'Saved to your stats.'),
         h('div', { class: 'row' },
           missed.length ? h('button', { class: 'btn', type: 'button', onclick: () => { only = missed; renderSetup(); startSession(); } }, 'Practise the missed ones') : null,
           h('button', { class: 'btn primary lg', type: 'button', onclick: () => { only = null; renderSetup(); startSession(); } }, 'New session', h('kbd', null, 'Space'))));
-      session = Object.assign(session, { over: true });
     }
 
     function renderEmpty() {
-      stageTop.replaceChildren(h('span', { class: 'eyebrow' }, Q.MODE[cfg.mode].label));
-      stageEl.replaceChildren(h('div', { class: 'summary' }, h('h2', null, 'Pick some letters'), h('p', { class: 'muted' }, 'Choose at least one letter group on the left to start.')));
+      stageTop.replaceChildren(h('span', { class: 'eyebrow' }, mode().label), h('div', { class: 'row' }, optionsButton()));
+      stageEl.replaceChildren(h('div', { class: 'summary' }, h('h2', null, 'Pick some letters'), h('p', { class: 'muted' }, 'Choose at least one letter group in the options to start.')));
       actionsEl.replaceChildren();
     }
 
-    /* ---------------- setup panel ---------------- */
+    /* ---------------- options panel ---------------- */
     function set(k, v, restart) {
       store.setPractice(k, v);
       renderSetup();
-      if (restart === 'session') startSession();
-      else if (session && !session.over) newRound();
-      else startSession();
+      if (restart === 'session' || !session || session.over) startSession();
+      else newRound();
     }
 
     function renderSetup() {
-      const modeList = h('div', { class: 'mode-list' }, Q.MODES.map(m =>
-        h('button', { type: 'button', 'aria-pressed': String(cfg.mode === m.id), onclick: () => set('mode', m.id, 'session') },
-          h('b', null, m.label), h('span', null, m.desc))));
+      const m = mode();
+      const modeBtn = x => h('button', { type: 'button', 'aria-pressed': String(cfg.mode === x.id), onclick: () => set('mode', x.id, 'session') },
+        h('b', null, x.label), h('span', null, x.desc));
+      const modeList = h('div', { class: 'mode-list' },
+        h('div', { class: 'mode-group-label' }, 'Read aloud · you mark yourself'),
+        Q.MODES.filter(x => x.kind === 'read').map(modeBtn),
+        h('div', { class: 'mode-group-label' }, 'Quiz · checked for you'),
+        Q.MODES.filter(x => x.kind === 'quiz').map(modeBtn));
 
-      const markChips = (cfg.mode === 'sounds' || cfg.mode === 'joined') ? h('div', { class: 'field' },
+      const markChips = m.uses.includes('marks') ? h('div', { class: 'field' },
         h('span', { class: 'label' }, 'Vowel marks'),
         h('div', { class: 'chips' }, MARK_CHIPS.map(c => {
           const on = c.ids.every(x => cfg.marks.includes(x));
           return h('button', {
             class: 'chip', type: 'button', 'aria-pressed': String(on),
             onclick: () => {
-              let next = on ? cfg.marks.filter(x => !c.ids.includes(x)) : [...new Set([...cfg.marks, ...c.ids])];
-              if (!next.length) next = ['a'];
-              set('marks', next);
+              let nextMarks = on ? cfg.marks.filter(x => !c.ids.includes(x)) : [...new Set([...cfg.marks, ...c.ids])];
+              if (!nextMarks.length) nextMarks = ['a'];
+              set('marks', nextMarks);
             },
           }, h('span', { class: 'ar' }, c.ar), c.label);
         }))) : null;
 
       const allOn = cfg.groups.length === Q.GROUPS.length;
+      const small = { padding: '2px 8px', fontSize: '12.5px' };
       const groups = h('div', { class: 'field' },
         h('div', { class: 'row', style: { justifyContent: 'space-between' } },
           h('span', { class: 'label' }, 'Letters'),
           h('div', { class: 'row', style: { gap: '4px' } },
-            h('button', { class: 'btn ghost', type: 'button', style: { padding: '2px 8px', fontSize: '12.5px' }, onclick: () => { only = null; set('groups', allOn ? [] : Q.GROUPS.map(g => g.id)); } }, allOn ? 'None' : 'All'),
+            h('button', { class: 'btn ghost', type: 'button', style: small, onclick: () => { only = null; set('groups', allOn ? [] : Q.GROUPS.map(g => g.id)); } }, allOn ? 'None' : 'All'),
             h('button', {
-              class: 'btn ghost', type: 'button', style: { padding: '2px 8px', fontSize: '12.5px' },
-              title: 'Practise only your 6 weakest letters',
+              class: 'btn ghost', type: 'button', style: small, title: 'Practise only your 6 weakest letters',
               onclick: () => {
                 const weak = store.weakest(6, 2).map(x => x.l.id);
                 if (weak.length < 2) { Q.toast('Practise a little more first so I can find your weak letters'); return; }
@@ -370,7 +480,7 @@
               },
             }, 'Weakest 6'))),
         only ? h('div', { class: 'row small' }, h('span', { class: 'muted' }, 'Only: '), h('span', { class: 'ar', style: { fontSize: '22px' } }, only.map(id => Q.L[id].ch).join(' ')),
-          h('button', { class: 'btn ghost', type: 'button', style: { padding: '2px 8px', fontSize: '12.5px' }, onclick: () => { only = null; renderSetup(); startSession(); } }, 'Clear')) : null,
+          h('button', { class: 'btn ghost', type: 'button', style: small, onclick: () => { only = null; renderSetup(); startSession(); } }, 'Clear')) : null,
         h('div', { class: 'chips' }, Q.GROUPS.map(g => {
           const on = cfg.groups.includes(g.id);
           return h('button', {
@@ -386,12 +496,11 @@
           h('span', { class: 'num' }, cfg[key]),
           h('button', { type: 'button', 'aria-label': 'More', onclick: () => set(key, Math.min(max, cfg[key] + 1)) }, '+')));
 
-      const size = cfg.mode === 'quiz' ? null
-        : cfg.mode === 'joined' ? stepper('Groups per row', 'words', 1, 4)
-          : stepper('Letters per row', 'rowLen', 1, 8);
+      const size = m.uses.includes('words') ? stepper('Groups per row', 'words', 1, 4)
+        : m.uses.includes('len') ? stepper('Letters per row', 'rowLen', 1, 8) : null;
 
       const rounds = h('div', { class: 'field' },
-        h('span', { class: 'label' }, 'Rounds per session'),
+        h('span', { class: 'label' }, isQuiz() ? 'Questions per session' : 'Rows per session'),
         h('div', { class: 'seg' }, ROUND_CHOICES.map(n => h('button', { type: 'button', 'aria-pressed': String(cfg.rounds === n), onclick: () => set('rounds', n, 'session') }, n))));
 
       const toggle = (label, key, title) => h('label', { class: 'toggle', title },
@@ -403,8 +512,9 @@
         h('div', { class: 'row', style: { gap: '18px', alignItems: 'flex-end' } }, size, rounds),
         h('div', { class: 'stack', style: { gap: '8px' } },
           toggle('Show weak letters more often', 'focusWeak', 'Letters you miss come up more'),
-          toggle('Mix in look-alikes', 'lookalikes', 'e.g. ب next to ت and ث'),
-          toggle('Show keyboard keys in answers', 'showKeys'))].filter(Boolean));
+          isQuiz() ? null : toggle('Mix in look-alikes', 'lookalikes', 'e.g. ب next to ت and ث'),
+          isQuiz() ? null : toggle('Show keyboard keys in answers', 'showKeys')),
+      ].filter(Boolean));
     }
 
     /* ---------------- keyboard ---------------- */
@@ -414,13 +524,14 @@
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
-        if (!round) { only = only || null; startSession(); return; }
+        if (!round) { startSession(); return; }
         next();
         return;
       }
+      if (e.key === 'o' || e.key === 'O') { toggleSetup(); return; }
       if (/^[1-9]$/.test(e.key) && round) {
         const i = Number(e.key) - 1;
-        if (round.kind === 'quiz') { if (round.options[i]) answerQuiz(round.options[i]); }
+        if (round.kind === 'quiz') answerQuiz(i);
         else toggleUnit(i);
       }
     }
@@ -431,7 +542,6 @@
 
     return () => {
       document.removeEventListener('keydown', onKey);
-      clearTimeout(advanceTimer);
       finishSession(false);
     };
   };

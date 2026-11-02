@@ -184,11 +184,15 @@
   ];
 
   /* Practice modes */
+  /* kind: 'read' = you say it aloud and mark yourself · 'quiz' = the site checks your answer
+     uses: which settings apply (marks = vowel marks, len = row length, words = groups per row) */
   Q.MODES = [
-    { id: 'names', label: 'Letter names', short: 'Names', desc: 'See a letter, say its name.' },
-    { id: 'sounds', label: 'Read the sounds', short: 'Sounds', desc: 'Letters with vowel marks. Say ba, bi, bu…' },
-    { id: 'joined', label: 'Joined letters', short: 'Joined', desc: 'Short joined groups, read syllable by syllable.' },
-    { id: 'quiz', label: 'Spot the letter', short: 'Spot it', desc: 'Pick the right letter from look-alikes.' },
+    { id: 'names', kind: 'read', label: 'Letter names', short: 'Names', desc: 'See a letter, say its name.', uses: ['len'] },
+    { id: 'sounds', kind: 'read', label: 'Read the sounds', short: 'Sounds', desc: 'Letters with vowels. Say ba, bi, bu…', uses: ['marks', 'len'], sound: true },
+    { id: 'joined', kind: 'read', label: 'Joined letters', short: 'Joined', desc: 'Short joined groups, syllable by syllable.', uses: ['marks', 'words'], sound: true },
+    { id: 'q-sound', kind: 'quiz', label: 'Letter → sound', short: 'Letter→sound', desc: 'See بَ, pick its transliteration: ba.', uses: ['marks'], sound: true },
+    { id: 'q-letter', kind: 'quiz', label: 'Sound → letter', short: 'Sound→letter', desc: 'See "kha", pick the right letter.', uses: ['marks'], sound: true },
+    { id: 'quiz', kind: 'quiz', label: 'Letter ↔ name', short: 'Names quiz', desc: 'Names both ways: ب is Baa.', uses: [] },
   ];
   Q.MODE = Object.fromEntries(Q.MODES.map(m => [m.id, m]));
 

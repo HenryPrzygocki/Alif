@@ -6,12 +6,12 @@ A personal practice desk for learning to read the Quran, starting from the lette
 
 | Page | What it does |
 |---|---|
-| **Today** | Ramadan countdown, your Iqra book and pace, today's goal, your trickiest letters, quick-start drills |
-| **Practice** | Read a row out loud, reveal, click what you got wrong. Four modes: *Letter names*, *Read the sounds* (fatḥa / kasra / ḍamma / tanwīn), *Joined letters*, *Spot the letter* (multiple choice between look-alikes). Weak letters come up more often. Fully keyboard-driven: `Space` reveal/next, `1`–`9` mark wrong |
+| **Today** | Ramadan countdown (first taraweeh Sun 7 Feb 2027, first fast Mon 8 Feb), your Iqra book and pace, today's goal, your trickiest letters, quick-start drills |
+| **Practice** | *Read aloud* (you mark yourself): Letter names, Read the sounds (fatḥa / kasra / ḍamma / tanwīn), Joined letters. Say the row, reveal, click what you missed. *Quiz* (the site checks): Letter → sound, Sound → letter, Letter ↔ name, with look-alike distractors and an explanation when you miss. Weak letters come up more often. Keyboard: `Space` reveal/next, `1`–`9` mark or answer, `O` hide options |
 | **Letters** | All 28 letters + hamza grouped by shape, with name, sound, pronunciation tip, positional forms, vowels, look-alikes and your record. Vowel-mark reference |
 | **Keyboard** | Type Arabic with Latin keys, using the [Lexilogos Quranic keyboard](https://www.lexilogos.com/keyboard/arabic_quranic.htm) layout (`t'` → ث, `=a` → fatḥa…). Shows each letter by name as you type. Switch between Uthmani (Madani), Indo-Pak and other fonts |
 | **Progress** | Practice calendar up to Ramadan, 30-day trends (volume, accuracy, seconds per letter), mastery of every letter, mix-ups, hardest syllables, sessions |
-| **Setup** | Iqra book, daily goal, Ramadan date override, font, theme, backup / restore |
+| **Setup** | Iqra book, daily goal, optional Ramadan date override, font, theme, backup / restore |
 
 Progress is saved in the browser (`localStorage`). Use **Setup → Download backup** now and then.
 

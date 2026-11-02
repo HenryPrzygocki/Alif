@@ -72,9 +72,29 @@
           rec && rec.n
             ? h('p', { class: 'small' }, `${rec.n} reads · ${Q.pct(1 - rec.w / rec.n)} right · `, h('b', null, Q.store.LEVELS[Q.store.level(selected)]))
             : h('p', { class: 'small muted' }, 'Not practised yet.')),
-        h('button', { class: 'btn', type: 'button', onclick: () => { Q.practiceOnly = [selected, ...like.map(o => o.id)].filter(id => Q.L[id]); Q.store.setPractice('mode', Q.L[selected].noSound ? 'names' : Q.store.state.practice.mode === 'quiz' ? 'sounds' : Q.store.state.practice.mode); Q.go('practice'); } },
+        h('button', { class: 'btn', type: 'button', onclick: () => { Q.practiceOnly = [selected, ...like.map(o => o.id)].filter(id => Q.L[id]); const cur = Q.MODE[Q.store.state.practice.mode]; if (Q.L[selected].noSound && cur && cur.sound) Q.store.setPractice('mode', 'names'); Q.go('practice'); } },
           'Practise ' + l.name + ' and its look-alikes'));
     }
+
+    const GUIDE = [
+      ['ḥ', 'ح', 'strong h from the middle of the throat'],
+      ['h', 'ه', 'soft, airy h'],
+      ['ṣ ḍ ṭ ẓ', 'ص ض ط ظ', 'heavy versions of s, d, t, dh'],
+      ['th', 'ث', 'as in think'],
+      ['dh', 'ذ', 'as in this'],
+      ['kh', 'خ', 'as in loch'],
+      ['gh', 'غ', 'a gargled r'],
+      ['sh', 'ش', 'as in she'],
+      ['q', 'ق', 'a deep k'],
+      ['ʿ', 'ع', 'ʿayn, squeezed throat sound'],
+      ['ʾ', 'ء', 'hamza, the catch in uh-oh'],
+      ['a i u', 'ـَ ـِ ـُ', 'short vowels'],
+      ['an in un', 'ـً ـٍ ـٌ', 'tanwīn: vowel + n'],
+    ];
+    const guide = h('section', { class: 'card stack' },
+      h('div', { class: 'card-head' }, h('h2', null, 'Reading the transliteration'), h('span', { class: 'small muted' }, 'The Latin spelling used in the quizzes')),
+      h('div', { class: 'guide' }, GUIDE.map(([tr, ar, what]) => h('div', { class: 'guide-row' },
+        h('b', { class: 'translit' }, tr), h('span', { class: 'ar' }, ar), h('span', { class: 'small' }, what)))));
 
     const marks = h('section', { class: 'card stack' },
       h('div', { class: 'card-head' },
@@ -92,6 +112,7 @@
         h('div', null, h('h1', null, 'Letters'),
           h('p', null, 'All 28 letters plus hamza, grouped by shape. Letters in the same row share a body and differ only by their dots. Read each row from right to left.'))),
       h('div', { class: 'letters-layout' }, h('section', { class: 'card' }, groupsEl), detailEl),
+      guide,
       marks));
 
     renderGroups();

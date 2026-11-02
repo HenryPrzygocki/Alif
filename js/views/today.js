@@ -17,8 +17,10 @@
     { id: 'iqra2', title: 'Joined letters', sub: 'Iqra 2 · بَتَثَ → ba-ta-tha', preset: { mode: 'joined', marks: ['a'] }, book: 2 },
     { id: 'iqra3', title: 'Fatḥa, kasra, ḍamma', sub: 'Iqra 3 · بَ بِ بُ → ba bi bu', preset: { mode: 'sounds', marks: ['a', 'i', 'u'] }, book: 3 },
     { id: 'iqra4', title: 'Add tanwīn', sub: 'Iqra 4 · بً بٍ بٌ → ban bin bun', preset: { mode: 'sounds', marks: ['a', 'i', 'u', 'an', 'in', 'un'] }, book: 4 },
-    { id: 'names', title: 'Letter names', sub: 'ب → Baa. Good for talking with your teacher', preset: { mode: 'names' } },
-    { id: 'quiz', title: 'Spot the letter', sub: 'Tell look-alikes apart: ح خ ج', preset: { mode: 'quiz' } },
+    { id: 'q-sound', title: 'Quiz: letter → sound', sub: 'خَ → kha? ḥa? ja? The site checks it', preset: { mode: 'q-sound' } },
+    { id: 'q-letter', title: 'Quiz: sound → letter', sub: '“ṣa” → صَ سَ ضَ…', preset: { mode: 'q-letter' } },
+    { id: 'names', title: 'Letter names', sub: 'ب → Baa. Read aloud', preset: { mode: 'names' } },
+    { id: 'quiz', title: 'Quiz: letter ↔ name', sub: 'Tell look-alikes apart: ح خ ج', preset: { mode: 'quiz' } },
   ];
 
   function ornament() {
@@ -48,20 +50,26 @@
     /* countdown */
     const booksLeft = 6 - book + 1;
     const perBook = r.days > 0 ? Math.floor(r.days / booksLeft) : 0;
+    const fmtLong = d => Q.fmtDate(d, { weekday: 'long', month: 'long', day: 'numeric' });
+    const shown = r.phase === 'during' ? r.dayOf : r.days;
+    let body;
+    if (r.phase === 'during') {
+      body = [h('div', { class: 'eyebrow' }, 'Ramadan Mubarak'), h('h2', null, `Day ${r.dayOf} of Ramadan`), h('p', { class: 'sub' }, 'Keep reading every day. Every letter counts.')];
+    } else if (r.phase === 'tonight') {
+      body = [h('div', { class: 'eyebrow' }, 'Tonight'), h('h2', null, 'Ramadan begins at sunset'), h('p', { class: 'sub' }, `First taraweeh tonight. First fast ${fmtLong(r.fast)}.`)];
+    } else {
+      body = [
+        h('div', { class: 'eyebrow' }, 'Countdown'),
+        h('h2', null, `${r.days === 1 ? 'Day' : 'Days'} until Ramadan${r.year ? ' ' + r.year : ''}`),
+        h('p', { class: 'sub' }, `Begins at sunset on ${fmtLong(r.night)}, ${r.night.getFullYear()}: the first taraweeh. First fast ${fmtLong(r.fast)}.`,
+          r.source === 'custom' ? ' (Your own date from Setup.)' : ' Expected date; your mosque confirms it after the moon sighting.'),
+        h('p', { class: 'sub' }, `That is about ${Math.round(r.days / 7)} weeks. With ${booksLeft} Iqra ${booksLeft === 1 ? 'book' : 'books'} to go, aim for roughly `, h('b', null, `${perBook} days per book`), '.'),
+      ];
+    }
     const countdown = h('section', { class: 'card countdown' },
       h('div', { class: 'ayah-num' }, ornament(),
-        h('div', null, h('span', { class: 'n num' }, r.inRamadan ? r.dayOf : r.days), h('span', { class: 'n-ar' }, Q.toArabicDigits(r.inRamadan ? r.dayOf : r.days)))),
-      h('div', { class: 'stack' },
-        r.inRamadan
-          ? [h('h2', null, `Day ${r.dayOf} of Ramadan`), h('p', { class: 'sub' }, 'Ramadan Mubarak. Keep reading every day.')]
-          : [
-            h('div', { class: 'eyebrow' }, 'Countdown'),
-            h('h2', null, `${r.days === 1 ? 'Day' : 'Days'} until Ramadan${r.year ? ' ' + r.year : ''}`),
-            h('p', { class: 'sub' }, `Expected ${Q.fmtDate(r.start, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}. `,
-              r.source === 'custom' ? 'You set this date yourself.' : 'The exact day depends on the moon sighting your community follows. ',
-              h('a', { href: '#setup' }, 'Change date')),
-            h('p', { class: 'sub' }, `That is about ${Math.round(r.days / 7)} weeks. With ${booksLeft} Iqra ${booksLeft === 1 ? 'book' : 'books'} to go, aim for roughly `, h('b', null, `${perBook} days per book`), '.'),
-          ]));
+        h('div', null, h('span', { class: 'n num' }, shown), h('span', { class: 'n-ar' }, Q.toArabicDigits(shown)))),
+      h('div', { class: 'stack' }, body));
 
     /* today numbers */
     const goalPct = Math.min(1, today.n / goal);

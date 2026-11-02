@@ -278,6 +278,14 @@ kbd.key {
 .setup .field + .field { margin-top: 2px; }
 .setup .desc { font-size: 13px; color: var(--ink-3); }
 .mode-list { display: grid; gap: 6px; }
+.mode-group-label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); margin-top: 6px; }
+.mode-group-label:first-child { margin-top: 0; }
+.practice.focus { grid-template-columns: minmax(0, 1fr); }
+.practice.focus .setup { display: none; }
+.practice.focus .stage { min-height: 440px; }
+.tag.auto { background: var(--accent-soft); color: var(--accent); }
+.tag.streak { background: var(--gold-soft); color: var(--gold); }
+.btn.sm { padding: 5px 10px; font-size: 13px; }
 .mode-list button {
   text-align: left; border: 1px solid var(--line); background: var(--sheet); border-radius: var(--r-sm);
   padding: 9px 12px; cursor: pointer; display: grid; gap: 1px;
@@ -344,17 +352,28 @@ kbd.key {
 .option:hover { border-color: var(--ink-3); }
 .option .ar { font-size: 60px; line-height: 1.5; }
 .option .nm { font-weight: 600; font-size: 17px; padding: 14px 0; }
+.option .nm.translit { font-family: var(--f-display); font-size: 28px; font-weight: 500; padding: 10px 0; }
+.option.dim { opacity: .45; }
+.option:disabled { cursor: default; }
+.quiz .prompt .q.translit { font-size: 64px; font-weight: 500; line-height: 1.25; padding: 14px 0 4px; }
 .option .idx { position: absolute; top: 6px; left: 8px; font: 11px var(--f-mono); color: var(--ink-3); }
 .option.right { border-color: var(--good); background: color-mix(in srgb, var(--good) 14%, var(--sheet)); }
 .option.picked-wrong { border-color: var(--bad); background: var(--bad-soft); }
-.feedback { min-height: 24px; font-weight: 600; text-align: center; }
-.feedback.bad { color: var(--bad); }
+.feedback { min-height: 48px; font-weight: 600; text-align: center; display: grid; gap: 4px; justify-items: center; }
+.feedback.bad > div:first-child { color: var(--bad); }
+.feedback .tip { font-weight: 400; font-size: 13.5px; color: var(--ink-2); max-width: 62ch; }
+.unit .ans.show, .syls.show, .feedback.good, .feedback.bad { animation: rise .18s ease-out; }
+@keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .feedback.good { color: var(--good); }
 
 .summary { display: grid; gap: 20px; justify-items: center; text-align: center; width: 100%; }
 .summary .big { font-family: var(--f-display); font-size: 56px; font-weight: 600; line-height: 1; }
-.summary .missed { display: flex; flex-direction: row-reverse; gap: 10px; flex-wrap: wrap; justify-content: center; }
-.summary .missed span { font-family: var(--f-arabic); font-size: 40px; line-height: 1.5; color: var(--bad); padding: 0 10px; border: 1px solid var(--bad-soft); border-radius: var(--r-sm); background: var(--bad-soft); }
+.summary .missed { display: flex; flex-direction: row-reverse; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.miss-chip { display: grid; justify-items: center; gap: 0; padding: 0 12px 8px; min-width: 74px; border-radius: var(--r-sm); background: var(--bad-soft); }
+.miss-chip .ar { font-size: 40px; line-height: 1.5; color: var(--bad); }
+.miss-chip b { font-size: 13px; }
+.miss-chip span:last-child { font-size: 12px; color: var(--ink-2); }
+.summary-facts { display: flex; gap: 36px; flex-wrap: wrap; justify-content: center; text-align: left; }
 
 /* ---------- letters reference ---------- */
 .letters-layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 22px; align-items: start; }
@@ -389,6 +408,10 @@ kbd.key {
 .vowel-row > div { border: 1px solid var(--line-2); border-radius: var(--r-sm); display: grid; justify-items: center; padding: 2px 2px 8px; }
 .vowel-row .ar { font-size: 46px; line-height: 1.6; }
 .vowel-row b { font-size: 15px; }
+.guide { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 4px 24px; }
+.guide-row { display: grid; grid-template-columns: 70px 64px minmax(0, 1fr); gap: 10px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--line-2); }
+.guide-row .translit { font-family: var(--f-display); font-size: 18px; font-weight: 600; }
+.guide-row .ar { font-size: 26px; line-height: 1.5; text-align: center; }
 .marks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 10px; }
 .mark-card { border: 1px solid var(--line); border-radius: var(--r); background: var(--sheet); padding: 12px 14px; display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; align-items: center; }
 .mark-card .ar { font-size: 48px; line-height: 1.6; text-align: center; }

@@ -45,9 +45,11 @@
     const r = Q.ramadan();
     const foot = Q.$('#rail-foot');
     foot.replaceChildren(...(
-      r.inRamadan
+      r.phase === 'during'
         ? [h('div', { class: 'big' }, 'Day ' + r.dayOf), h('div', { class: 'small' }, 'of Ramadan. Ramadan Mubarak')]
-        : [h('div', { class: 'big num' }, r.days + (r.days === 1 ? ' day' : ' days')), h('div', { class: 'small' }, 'until Ramadan · ' + Q.fmtDate(r.start, { month: 'short', day: 'numeric' }))]
+        : r.phase === 'tonight'
+          ? [h('div', { class: 'big' }, 'Tonight'), h('div', { class: 'small' }, 'Ramadan begins at sunset')]
+          : [h('div', { class: 'big num' }, r.days + (r.days === 1 ? ' day' : ' days')), h('div', { class: 'small' }, 'until Ramadan · ' + Q.fmtDate(r.night, { weekday: 'short', month: 'short', day: 'numeric' }))]
     ));
   }
 

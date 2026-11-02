@@ -86,7 +86,7 @@
     const minStart = Q.addDays(today, -7 * 8);
     if (start > minStart) start = minStart;
     if (Q.daysBetween(start, today) > 7 * 26) start = Q.addDays(today, -7 * 26);
-    let end = r.inRamadan ? Q.addDays(r.start, 29) : r.start;
+    let end = r.inRamadan ? Q.addDays(r.fast, 29) : r.fast;
     if (Q.daysBetween(today, end) > 7 * 30) end = Q.addDays(today, 7 * 30);
     start = Q.addDays(start, -start.getDay());   // weeks start on Sunday
 
@@ -106,7 +106,7 @@
         const rec = st.days[key];
         let cls = '';
         if (Q.daysBetween(end, date) > 0) cls = 'pad';
-        else if (Q.dayKey(date) === Q.dayKey(r.start)) cls = 'ramadan';
+        else if (key === Q.dayKey(r.night) || key === Q.dayKey(r.fast)) cls = 'ramadan';
         else if (diff > 0) cls = 'future';
         else if (rec && rec.n) {
           const f = rec.n / goal;
@@ -116,7 +116,7 @@
         const cell = h('i', { class: cls });
         cell.addEventListener('mouseenter', e => {
           let txt = `<b>${Q.fmtDate(date, { weekday: 'short', month: 'short', day: 'numeric' })}</b><br>`;
-          if (cls.includes('ramadan')) txt += 'Ramadan begins (expected)';
+          if (cls.includes('ramadan')) txt += key === Q.dayKey(r.night) ? 'Ramadan begins at sunset · first taraweeh' : 'First fast of Ramadan';
           else if (diff > 0) txt += `${diff} ${diff === 1 ? 'day' : 'days'} from now`;
           else txt += rec && rec.n ? `${rec.n} reads · ${Q.pct(1 - rec.w / rec.n)} right` : 'No practice';
           Q.showTip(txt, e.clientX, e.clientY);
@@ -176,7 +176,7 @@
         h('span', { class: 'ar' }, c.target.ch), h('span', { class: 'arrow' }, '→'), h('span', { class: 'ar', style: { color: 'var(--bad)' } }, c.picked.ch),
         h('span', { class: 'small' }, `${c.target.name} taken for ${c.picked.name}`),
         h('span', { class: 'small muted num' }, c.count + '×'))))
-      : h('p', { class: 'empty' }, 'No mix-ups recorded yet. They come from the "Spot the letter" mode.');
+      : h('p', { class: 'empty' }, 'No mix-ups yet. They are recorded by the quiz modes.');
 
     /* hardest sounds */
     const syl = Object.entries(st.syl)
