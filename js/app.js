@@ -77,9 +77,28 @@
 
   Q.applyTheme();
   Q.applyFont();
+  Q.applyScheme(Q.store.state.settings.translit);
   railFoot();
   window.addEventListener('hashchange', render);
-  Q.store.onChange(() => { Q.applyTheme(); Q.applyFont(); });
+  Q.store.onChange(() => {
+    Q.applyTheme(); Q.applyFont();
+    if (Q.store.state.settings.translit !== Q.SCHEME) Q.applyScheme(Q.store.state.settings.translit);
+  });
+
+  /* Small EN / PT switch used on several pages */
+  Q.schemeSwitch = function (onChange) {
+    const wrap = h('div', { class: 'seg', role: 'group', 'aria-label': 'Transliteration' });
+    Q.SCHEMES.forEach(sc => wrap.append(h('button', {
+      type: 'button', 'aria-pressed': String(Q.SCHEME === sc.id), title: sc.label + ': ' + sc.example,
+      onclick: () => {
+        Q.store.setSetting('translit', sc.id);
+        Q.applyScheme(sc.id);
+        wrap.querySelectorAll('button').forEach((b, i) => b.setAttribute('aria-pressed', String(Q.SCHEMES[i].id === sc.id)));
+        if (onChange) onChange(sc.id);
+      },
+    }, sc.short)));
+    return wrap;
+  };
   render();
   // keep the countdown honest if the tab stays open past midnight
   setInterval(railFoot, 60 * 60 * 1000);

@@ -10,7 +10,7 @@
     return {
       v: 1,
       createdAt: Date.now(),
-      settings: { goal: 150, font: 'hafs', theme: 'system', ramadan: '', iqraBook: 1, iqraPage: '' },
+      settings: { goal: 150, font: 'hafs', theme: 'system', ramadan: '', iqraBook: 1, iqraPage: '', translit: 'pt' },
       practice: {
         mode: 'sounds', groups: Q.GROUPS.map(g => g.id), marks: ['a'], rowLen: 4, words: 2,
         rounds: 12, focusWeak: true, lookalikes: true, showKeys: true, hideSetup: false,

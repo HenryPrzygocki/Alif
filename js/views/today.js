@@ -13,13 +13,13 @@
   };
 
   const PRESETS = [
-    { id: 'iqra1', title: 'Sounds with fatḥa', sub: 'Iqra 1 · بَ تَ ثَ → ba ta tha', preset: { mode: 'sounds', marks: ['a'] }, book: 1 },
-    { id: 'iqra2', title: 'Joined letters', sub: 'Iqra 2 · بَتَثَ → ba-ta-tha', preset: { mode: 'joined', marks: ['a'] }, book: 2 },
-    { id: 'iqra3', title: 'Fatḥa, kasra, ḍamma', sub: 'Iqra 3 · بَ بِ بُ → ba bi bu', preset: { mode: 'sounds', marks: ['a', 'i', 'u'] }, book: 3 },
-    { id: 'iqra4', title: 'Add tanwīn', sub: 'Iqra 4 · بً بٍ بٌ → ban bin bun', preset: { mode: 'sounds', marks: ['a', 'i', 'u', 'an', 'in', 'un'] }, book: 4 },
-    { id: 'q-sound', title: 'Quiz: letter → sound', sub: 'خَ → kha? ḥa? ja? The site checks it', preset: { mode: 'q-sound' } },
-    { id: 'q-letter', title: 'Quiz: sound → letter', sub: '“ṣa” → صَ سَ ضَ…', preset: { mode: 'q-letter' } },
-    { id: 'names', title: 'Letter names', sub: 'ب → Baa. Read aloud', preset: { mode: 'names' } },
+    { id: 'iqra1', title: 'Sounds with fatḥa', sub: 'Iqra 1 · بَ تَ ثَ → {baa:a} {taa:a} {thaa:a}', preset: { mode: 'sounds', marks: ['a'] }, book: 1 },
+    { id: 'iqra2', title: 'Joined letters', sub: 'Iqra 2 · بَتَثَ → {baa:a}-{taa:a}-{thaa:a}', preset: { mode: 'joined', marks: ['a'] }, book: 2 },
+    { id: 'iqra3', title: 'Fatḥa, kasra, ḍamma', sub: 'Iqra 3 · بَ بِ بُ → {baa:a} {baa:i} {baa:u}', preset: { mode: 'sounds', marks: ['a', 'i', 'u'] }, book: 3 },
+    { id: 'iqra4', title: 'Add tanwīn', sub: 'Iqra 4 · بً بٍ بٌ → {baa:an} {baa:in} {baa:un}', preset: { mode: 'sounds', marks: ['a', 'i', 'u', 'an', 'in', 'un'] }, book: 4 },
+    { id: 'q-sound', title: 'Quiz: letter → sound', sub: 'خَ → {khaa:a}? {Haa:a}? {jeem:a}? The site checks it', preset: { mode: 'q-sound' } },
+    { id: 'q-letter', title: 'Quiz: sound → letter', sub: '“{Saad:a}” → صَ سَ ضَ…', preset: { mode: 'q-letter' } },
+    { id: 'names', title: 'Letter names', sub: 'ب → {name:baa}. Read aloud', preset: { mode: 'names' } },
     { id: 'quiz', title: 'Quiz: letter ↔ name', sub: 'Tell look-alikes apart: ح خ ج', preset: { mode: 'quiz' } },
   ];
 
@@ -101,7 +101,7 @@
         h('h2', null, 'Your Iqra path'),
         h('span', { class: 'small muted' }, 'Click the book you are on with your teacher')),
       track,
-      h('p', { class: 'small', style: { color: 'var(--ink-2)' } }, h('b', null, `Iqra ${cur.n}: `), Q.mixed(cur.covers),
+      h('p', { class: 'small', style: { color: 'var(--ink-2)' } }, h('b', null, `Iqra ${cur.n}: `), Q.mixed(Q.fill(cur.covers)),
         cur.n >= 4 ? ' Huruf drills the letters and vowels for now. Sukūn, shadda and real words are the next modules to build.' : ''));
 
     /* trickiest letters */
@@ -127,7 +127,7 @@
       h('div', { class: 'card-head' }, h('h2', null, 'Quick start')),
       h('div', { class: 'quick' }, PRESETS.map(p =>
         h('a', { href: '#practice', class: p === rec ? 'rec' : '', onclick: e => { e.preventDefault(); Q.startPreset(p.preset); } },
-          h('b', null, p.title + (p === rec ? ' · for you now' : '')), h('span', null, Q.mixed(p.sub))))));
+          h('b', null, p.title + (p === rec ? ' · for you now' : '')), h('span', null, Q.mixed(Q.fill(p.sub)))))));
 
     root.append(h('div', { class: 'page' },
       head,

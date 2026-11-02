@@ -98,7 +98,7 @@ a { color: var(--accent); }
 button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ar { font-family: var(--f-arabic); direction: rtl; unicode-bidi: isolate; font-feature-settings: normal; }
-.ar.inline { font-size: 1.15em; line-height: 1; }
+.ar.inline { font-size: 1.15em; line-height: 0; }
 .ar-plain { font-family: 'Scheherazade New', 'Amiri Quran', serif; }
 .mono { font-family: var(--f-mono); font-size: .9em; }
 .muted { color: var(--ink-3); }
@@ -408,8 +408,8 @@ kbd.key {
 .vowel-row > div { border: 1px solid var(--line-2); border-radius: var(--r-sm); display: grid; justify-items: center; padding: 2px 2px 8px; }
 .vowel-row .ar { font-size: 46px; line-height: 1.6; }
 .vowel-row b { font-size: 15px; }
-.guide { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 4px 24px; }
-.guide-row { display: grid; grid-template-columns: 70px 64px minmax(0, 1fr); gap: 10px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--line-2); }
+.guide { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 4px 24px; }
+.guide-row { display: grid; grid-template-columns: 104px 84px minmax(0, 1fr); gap: 10px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--line-2); }
 .guide-row .translit { font-family: var(--f-display); font-size: 18px; font-weight: 600; }
 .guide-row .ar { font-size: 26px; line-height: 1.5; text-align: center; }
 .marks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 10px; }

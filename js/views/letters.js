@@ -76,25 +76,47 @@
           'Practise ' + l.name + ' and its look-alikes'));
     }
 
-    const GUIDE = [
-      ['ḥ', 'ح', 'strong h from the middle of the throat'],
-      ['h', 'ه', 'soft, airy h'],
-      ['ṣ ḍ ṭ ẓ', 'ص ض ط ظ', 'heavy versions of s, d, t, dh'],
-      ['th', 'ث', 'as in think'],
-      ['dh', 'ذ', 'as in this'],
-      ['kh', 'خ', 'as in loch'],
-      ['gh', 'غ', 'a gargled r'],
-      ['sh', 'ش', 'as in she'],
-      ['q', 'ق', 'a deep k'],
-      ['ʿ', 'ع', 'ʿayn, squeezed throat sound'],
-      ['ʾ', 'ء', 'hamza, the catch in uh-oh'],
-      ['a i u', 'ـَ ـِ ـُ', 'short vowels'],
-      ['an in un', 'ـً ـٍ ـٌ', 'tanwīn: vowel + n'],
-    ];
+    const GUIDE = {
+      en: [
+        ['ḥ', 'ح', 'strong h from the middle of the throat'],
+        ['h', 'ه', 'soft, airy h'],
+        ['ṣ ḍ ṭ ẓ', 'ص ض ط ظ', 'heavy versions of s, d, t, dh'],
+        ['th', 'ث', 'as in think'],
+        ['dh', 'ذ', 'as in this'],
+        ['kh', 'خ', 'as in loch'],
+        ['gh', 'غ', 'a gargled r'],
+        ['sh', 'ش', 'as in she'],
+        ['q', 'ق', 'a deep k'],
+        ['ʿ', 'ع', 'ʿayn, squeezed throat sound'],
+        ['ʾ', 'ء', 'hamza, the catch in uh-oh'],
+        ['a i u', 'ـَ ـِ ـُ', 'short vowels'],
+        ['an in un', 'ـً ـٍ ـٌ', 'tanwīn: vowel + n'],
+      ],
+      pt: [
+        ['á · ó', 'بَ صَ', 'fatḥa: "á" nas letras leves, "ó" nas pesadas'],
+        ['i · u', 'ـِ ـُ', 'kasra e ḍamma'],
+        ['án ón in un', 'ـً ـٍ ـٌ', 'tanwīn: vogal + n bem pronunciado, sem nasalar'],
+        ['só dó tó dhó', 'صَ ضَ طَ ظَ', 'letras pesadas: boca cheia, fundo da língua alto'],
+        ['ṣi ḍu ṭi', 'صِ ضُ طِ', 'com kasra e ḍamma, o ponto lembra que continua pesada'],
+        ['rhó', 'خَ', 'rh raspado, como um rr carioca bem forte'],
+        ['ró', 'رَ', 'r batido de "caro", nunca o de "rato"'],
+        ['ghó', 'غَ', 'gargarejo com voz, como o r francês'],
+        ['qó', 'قَ', 'k do fundo da garganta'],
+        ['ḥá', 'حَ', 'h forte e soprado do meio da garganta'],
+        ['há', 'هَ', 'h suave do inglês "hat", nunca mudo'],
+        ['chá · djá', 'شَ جَ', 'como "chá" e "Djavan"'],
+        ['thá · dhá', 'ثَ ذَ', 'th do inglês: "think" · "this"'],
+        ['ʿá', 'عَ', 'ʿain: aperto no meio da garganta'],
+        ['ʾ', 'ء', 'hamza: a travinha de "ô-ôu"'],
+        ['ti · di', 'تِ دِ', 'secos, nunca "tchi" nem "dji"'],
+      ],
+    };
+    const guideEl = h('div', { class: 'guide' });
+    const renderGuide = () => guideEl.replaceChildren(...GUIDE[Q.SCHEME].map(([tr, ar, what]) => h('div', { class: 'guide-row' },
+      h('b', { class: 'translit' }, tr), h('span', { class: 'ar' }, ar), h('span', { class: 'small' }, what))));
     const guide = h('section', { class: 'card stack' },
-      h('div', { class: 'card-head' }, h('h2', null, 'Reading the transliteration'), h('span', { class: 'small muted' }, 'The Latin spelling used in the quizzes')),
-      h('div', { class: 'guide' }, GUIDE.map(([tr, ar, what]) => h('div', { class: 'guide-row' },
-        h('b', { class: 'translit' }, tr), h('span', { class: 'ar' }, ar), h('span', { class: 'small' }, what)))));
+      h('div', { class: 'card-head' }, h('h2', null, 'Reading the transliteration'), h('span', { class: 'small muted' }, 'The Latin spelling used in practice and quizzes')),
+      guideEl);
 
     const marks = h('section', { class: 'card stack' },
       h('div', { class: 'card-head' },
@@ -110,12 +132,14 @@
     root.append(h('div', { class: 'page' },
       h('div', { class: 'page-head' },
         h('div', null, h('h1', null, 'Letters'),
-          h('p', null, 'All 28 letters plus hamza, grouped by shape. Letters in the same row share a body and differ only by their dots. Read each row from right to left.'))),
+          h('p', null, 'All 28 letters plus hamza, grouped by shape. Letters in the same row share a body and differ only by their dots. Read each row from right to left.')),
+        h('div', { class: 'field' }, h('span', { class: 'label' }, 'Transliteration'), Q.schemeSwitch(() => { renderGroups(); renderDetail(); renderGuide(); }))),
       h('div', { class: 'letters-layout' }, h('section', { class: 'card' }, groupsEl), detailEl),
       guide,
       marks));
 
     renderGroups();
     renderDetail();
+    renderGuide();
   };
 })(window.Q = window.Q || {});

@@ -417,7 +417,7 @@
           ? h('div', { class: 'stack' }, h('div', { class: 'eyebrow' }, 'Missed this time'),
             h('div', { class: 'missed' }, missed.map(id => {
               const l = Q.L[id];
-              return h('span', { class: 'miss-chip' }, h('span', { class: 'ar' }, l.ch), h('b', null, l.name), h('span', null, l.id === 'alif' ? 'a' : l.tr));
+              return h('span', { class: 'miss-chip' }, h('span', { class: 'ar' }, l.ch), h('b', null, l.name), h('span', null, l.noSound ? l.tr : Q.sound(l.id, 'a')));
             })))
           : h('p', null, 'Nothing missed. Mā shāʾ Allāh.')));
       actionsEl.replaceChildren(h('div', { class: 'hint' }, 'Saved to your stats.'),
@@ -443,7 +443,7 @@
     function renderSetup() {
       const m = mode();
       const modeBtn = x => h('button', { type: 'button', 'aria-pressed': String(cfg.mode === x.id), onclick: () => set('mode', x.id, 'session') },
-        h('b', null, x.label), h('span', null, x.desc));
+        h('b', null, x.label), h('span', null, Q.mixed(Q.fill(x.desc))));
       const modeList = h('div', { class: 'mode-list' },
         h('div', { class: 'mode-group-label' }, 'Read aloud · you mark yourself'),
         Q.MODES.filter(x => x.kind === 'read').map(modeBtn),
@@ -506,10 +506,15 @@
       const toggle = (label, key, title) => h('label', { class: 'toggle', title },
         h('input', { type: 'checkbox', id: 'pr-' + key, checked: !!cfg[key], onchange: e => { store.setPractice(key, e.target.checked); if (key === 'showKeys' && round && round.kind !== 'quiz') renderRound(); } }), label);
 
+      const scheme = h('div', { class: 'field' },
+        h('span', { class: 'label' }, 'Transliteration'),
+        Q.schemeSwitch(() => { renderSetup(); if (session && session.over) renderSummary(); else newRound(); }));
+
       setupEl.replaceChildren(...[
         h('div', { class: 'field' }, h('span', { class: 'label' }, 'Mode'), modeList),
         markChips, groups,
         h('div', { class: 'row', style: { gap: '18px', alignItems: 'flex-end' } }, size, rounds),
+        scheme,
         h('div', { class: 'stack', style: { gap: '8px' } },
           toggle('Show weak letters more often', 'focusWeak', 'Letters you miss come up more'),
           isQuiz() ? null : toggle('Mix in look-alikes', 'lookalikes', 'e.g. ب next to ت and ث'),

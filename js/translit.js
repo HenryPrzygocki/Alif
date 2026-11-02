@@ -60,7 +60,11 @@
   Q.LETTERS.forEach(l => { INFO[l.ch] = Object.assign(INFO[l.ch] || {}, { name: l.name, letter: l }); });
   Object.entries(EXTRA_NAMES).forEach(([ch, name]) => { INFO[ch] = Object.assign(INFO[ch] || {}, { name }); });
   Q.MARKS.forEach(m => { INFO[m.mark] = Object.assign(INFO[m.mark] || {}, { name: m.name, mark: m }); });
-  Q.charInfo = ch => INFO[ch] || null;
+  Q.charInfo = ch => {
+    const i = INFO[ch];
+    if (!i) return null;
+    return i.letter ? Object.assign({}, i, { name: i.letter.name }) : i;
+  };
 
   const MARK_RE = /[ً-ٰٟۖ-ۭ]/;
   Q.isMark = ch => MARK_RE.test(ch);
@@ -75,14 +79,13 @@
     return out;
   };
 
-  /* Rough sound for one cluster, e.g. بَ → "ba", بْ → "b", بّ → "bba" */
+  /* Rough sound for one cluster in the current scheme, e.g. بَ → "bá", بْ → "b", بّ → "bbá" */
+  const ALIF_SEATS = { 'أ': 'alif', 'إ': 'alif', 'ء': 'hamza', 'ئ': 'hamza', 'ؤ': 'hamza' };
   Q.clusterSound = function (c) {
     const info = INFO[c.base];
-    let cons = info && info.letter ? info.letter.tr : null;
-    if (c.base === 'أ' || c.base === 'إ' || c.base === 'ء' || c.base === 'ئ' || c.base === 'ؤ') cons = 'ʾ';
-    if (cons == null) return '';
-    let v = '';
-    let doubled = false;
+    const id = ALIF_SEATS[c.base] || (info && info.letter ? info.letter.id : null);
+    if (!id) return '';
+    let v = null, doubled = false, long = false;
     for (const m of c.marks) {
       if (m === M.fatha) v = 'a';
       else if (m === M.kasra) v = 'i';
@@ -90,11 +93,17 @@
       else if (m === M.fathatan) v = 'an';
       else if (m === M.kasratan) v = 'in';
       else if (m === M.dammatan) v = 'un';
-      else if (m === M.daggerAlif) v = 'aa';
+      else if (m === M.daggerAlif) { v = v || 'a'; long = true; }
       else if (m === M.shadda) doubled = true;
     }
-    if (cons === 'ʾ' && v) cons = '';
-    if (!v && !c.marks.includes(M.sukun) && !doubled) return '';
-    return (doubled ? cons + cons : cons) + v;
+    const cons = Q.L[id].tr || '';
+    if (!v) return c.marks.includes(M.sukun) || doubled ? (doubled ? cons + cons : cons) : '';
+    if (id === 'hamza' && v) {
+      // hamza on a seat reads like alif with that vowel
+      return Q.sound('alif', v) + (long ? (Q.SCHEME === 'pt' ? 'á' : 'a') : '');
+    }
+    const snd = Q.sound(id, v);
+    const body = doubled ? cons + snd : snd;
+    return long ? body + (Q.SCHEME === 'pt' ? 'á' : 'a') : body;
   };
 })(window.Q = window.Q || {});

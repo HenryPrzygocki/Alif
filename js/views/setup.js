@@ -64,6 +64,8 @@
             `Already filled in for you: Ramadan begins at sunset on ${Q.fmtDate(auto.night, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} and the first fast is ${Q.fmtDate(auto.fast, { weekday: 'long', month: 'long', day: 'numeric' })}. Only change this if your mosque announces a different day.`)),
         h('section', { class: 'card stack' },
           h('h2', null, 'Look'),
+          h('div', { class: 'field' }, h('span', { class: 'label' }, 'Transliteration'), Q.schemeSwitch(),
+            h('p', { class: 'small muted' }, 'Português writes the sounds the way you would read them in Portuguese, Iqra style: heavy letters take ó (só, dó, rhó), light ones á (sá, chá). It also gives you letter names and tips in Portuguese.')),
           field('Arabic font for practice', 'set-font', font, 'Uthmani matches the Madani mushaf, the most common print worldwide and the default on Quran.com.'),
           fontPreview,
           h('div', { class: 'field' }, h('span', { class: 'label' }, 'Theme'), theme))),

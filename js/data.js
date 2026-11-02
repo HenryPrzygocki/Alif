@@ -138,6 +138,80 @@
     un: { id: 'un', mark: M.dammatan, name: 'Tanwīn ḍamm', suffix: 'un' },
   };
 
+  /* ---------- Transliteration schemes ----------
+     'en' = English-style (ba, kha, ṣa). 'pt' = Brazilian Portuguese, Iqra style:
+     heavy letters take "ó" with fatḥa (só, dó, tó, rhó, ró), light ones "á" (sá, chá, zá).
+     With kasra/ḍamma the heavy ص ض ط ظ keep a dot (ṣi, ḍu) so they stay distinct from س د ت ذ.
+     c = consonant · ci = consonant with kasra/ḍamma (if different) · o = fatḥa sounds "ó" */
+  Q.PT = {
+    alif:  { name: 'Álif', c: '', tip: 'Um "assento" silencioso. Carrega a hamza (أ) ou alonga a vogal antes dela (bá vira báá). No Iqra 1, أَ se lê simplesmente "á".' },
+    baa:   { name: 'Bá', c: 'b', tip: 'Como o b de "bala". Um ponto embaixo.' },
+    taa:   { name: 'Tá', c: 't', tip: 'Um t leve, como em "tatu". Com kasra é um "ti" seco, como em Portugal, nunca "tchi". Dois pontos em cima.' },
+    thaa:  { name: 'Thá', c: 'th', tip: 'O "th" do inglês "think": ponta da língua entre os dentes, sem voz. Três pontos em cima.' },
+    jeem:  { name: 'Djím', c: 'dj', tip: 'Como o "dj" de "Djavan", ou o j do inglês "jam". Um ponto dentro, embaixo da curva.' },
+    Haa:   { name: 'Ḥá', alt: 'h da garganta', c: 'ḥ', tip: 'Um h forte e soprado do meio da garganta, como quando você bafeja no vidro para embaçar. Não é mudo como o h do português, e não raspa como o rh. Sem pontos.' },
+    khaa:  { name: 'Khá', c: 'rh', o: true, tip: 'Um "rh" raspado no alto da garganta, como o rr carioca bem forte ou o j espanhol de "José". Letra pesada, por isso com fatḥa soa "rhó". Um ponto em cima.' },
+    daal:  { name: 'Dál', c: 'd', tip: 'Como o d de "dado". Com kasra é um "di" seco, nunca "dji". Não se liga à letra seguinte.' },
+    dhaal: { name: 'Dhál', c: 'dh', tip: 'O "th" do inglês "this": ponta da língua entre os dentes, com voz. Um ponto em cima.' },
+    raa:   { name: 'Rá', c: 'r', o: true, tip: 'Um r batido, como em "caro" ou "para", nunca o r de "rato". Com fatḥa e ḍamma fica pesado: "ró". Com kasra fica leve: "ri".' },
+    zaay:  { name: 'Záy', c: 'z', tip: 'Como o z de "zebra". É o rá com um ponto em cima.' },
+    seen:  { name: 'Sín', c: 's', tip: 'Um s leve, como em "sapo". Três dentinhos, sem pontos.' },
+    sheen: { name: 'Chín', c: 'ch', tip: 'O "ch" de "chá". É o sín com três pontos em cima.' },
+    Saad:  { name: 'Ṣád', alt: 's pesado', c: 's', ci: 'ṣ', o: true, tip: 'Um s pesado: levante o fundo da língua e encha a boca. Por isso com fatḥa soa "só", e não "sá".' },
+    Daad:  { name: 'Ḍád', alt: 'd pesado', c: 'd', ci: 'ḍ', o: true, tip: 'Um d pesado, feito com a lateral da língua contra os dentes de trás. Só existe no árabe, então treine com o professor. Com fatḥa: "dó".' },
+    Taa:   { name: 'Ṭá', alt: 't pesado', c: 't', ci: 'ṭ', o: true, tip: 'Um t pesado: mesmo lugar do ت, mas com o fundo da língua levantado e o som cheio. Com fatḥa: "tó".' },
+    Zaa:   { name: 'Ẓá', alt: 'dh pesado', c: 'dh', ci: 'ḍh', o: true, tip: 'Um "th" de "this" pesado: língua entre os dentes como no ذ, mas com a boca cheia. Com fatḥa: "dhó".' },
+    ayn:   { name: 'ʿAin', c: 'ʿ', tip: 'Um som apertado do meio da garganta. Não existe em português, então imite o professor de perto.' },
+    ghayn: { name: 'Ghain', c: 'gh', o: true, tip: 'Como um gargarejo, ou o r francês de "Paris", com voz. Letra pesada: "ghó". É o ʿain com um ponto.' },
+    faa:   { name: 'Fá', c: 'f', tip: 'Como o f de "faca". Um ponto em cima.' },
+    qaaf:  { name: 'Qáf', c: 'q', o: true, tip: 'Um k bem do fundo, quase na garganta. Letra pesada: "qó". Dois pontos em cima.' },
+    kaaf:  { name: 'Káf', c: 'k', tip: 'Um k leve, como em "casa". Feito mais na frente da boca que o ق.' },
+    laam:  { name: 'Lám', c: 'l', tip: 'Como o l de "lata", sempre com a ponta da língua (nunca "u" como no fim de "Brasil"). Leve, exceto no nome Allah depois de fatḥa ou ḍamma.' },
+    meem:  { name: 'Mím', c: 'm', tip: 'Como o m de "mão".' },
+    noon:  { name: 'Nún', c: 'n', tip: 'Como o n de "nada". Um ponto em cima de uma tigela funda.' },
+    haa:   { name: 'Há', alt: 'h suave', c: 'h', tip: 'Um h aspirado e suave, como no inglês "hat". Em árabe ele nunca é mudo. Não confunda com o ح forte.' },
+    waaw:  { name: 'Uáu', c: 'w', tip: 'Como o "u" de "água" (som de w). Depois de ḍamma vira um "uu" longo. Não se liga à próxima letra.' },
+    yaa:   { name: 'Iá', c: 'y', tip: 'Como o "i" de "iate" (som de y). Depois de kasra vira um "ii" longo. Dois pontos embaixo.' },
+    hamza: { name: 'Hamza', c: 'ʾ', tip: 'Uma travinha rápida na garganta, como o corte no meio de "ô-ôu". Muitas vezes vem sobre alif (أ), uáu (ؤ) ou iá (ئ).' },
+  };
+
+  Q.SCHEMES = [
+    { id: 'pt', label: 'Português (Brasil)', short: 'PT', example: 'só · chá · rhó' },
+    { id: 'en', label: 'English', short: 'EN', example: 'ṣa · sha · kha' },
+  ];
+  Q.SCHEME = 'pt';
+
+  /* Sound of one letter + vowel in the current scheme */
+  Q.sound = function (letterId, vowelId) {
+    const l = Q.L[letterId];
+    if (Q.SCHEME === 'pt') {
+      const p = Q.PT[letterId];
+      const isA = vowelId === 'a' || vowelId === 'an';
+      const c = isA ? p.c : (p.ci || p.c);
+      const v = { a: p.o ? 'ó' : 'á', an: p.o ? 'ón' : 'án', i: 'i', in: 'in', u: 'u', un: 'un' }[vowelId];
+      return c + v;
+    }
+    return (l.en.tr || '') + Q.VOWELS[vowelId].suffix;
+  };
+
+  /* Swap names, tips and sounds on every letter to the chosen scheme */
+  Q.LETTERS.forEach(l => { l.en = { name: l.name, alt: l.alt, tip: l.tip, tr: l.tr }; });
+  Q.applyScheme = function (id) {
+    Q.SCHEME = id === 'en' ? 'en' : 'pt';
+    Q.LETTERS.forEach(l => {
+      if (Q.SCHEME === 'pt') {
+        const p = Q.PT[l.id];
+        Object.assign(l, { name: p.name, alt: p.alt, tip: p.tip, tr: p.c });
+      } else Object.assign(l, l.en);
+    });
+  };
+
+  /* Fill "{baa:a}" placeholders in text with the current scheme's sound */
+  Q.fill = str => String(str).replace(/\{(\w+):(\w+)\}/g, (m, id, v) => {
+    if (id === 'name') return Q.L[v] ? Q.L[v].name : m;
+    return Q.L[id] && Q.VOWELS[v] ? Q.sound(id, v) : m;
+  });
+
   /* Build the written form + sound for one letter carrying one vowel. */
   Q.syllable = function (letterId, vowelId) {
     const l = Q.L[letterId];
@@ -147,7 +221,7 @@
       // Alif can't carry a vowel itself; Iqra writes it with hamza: أَ إِ أُ
       ch = (vowelId === 'i' || vowelId === 'in') ? 'إ' : 'أ';
     }
-    return { text: ch + v.mark, sound: (l.tr || '') + v.suffix };
+    return { text: ch + v.mark, sound: Q.sound(letterId, vowelId) };
   };
 
   /* Written forms by position, using the zero-width joiner to force shaping. */
@@ -175,7 +249,7 @@
 
   /* The six Iqra volumes, summarised. Editions vary a little. */
   Q.IQRA = [
-    { n: 1, title: 'Single letters with fatḥa', covers: 'Every letter read with fatḥa: أَ بَ تَ … read as a, ba, ta. No letter names, just sounds.', mode: 'sounds', marks: ['a'] },
+    { n: 1, title: 'Single letters with fatḥa', covers: 'Every letter read with fatḥa: أَ بَ تَ … read as {alif:a}, {baa:a}, {taa:a}. No letter names, just sounds.', mode: 'sounds', marks: ['a'] },
     { n: 2, title: 'Joined letters and long a', covers: 'Letters joined into words, with fatḥa. The long "aa" made by alif.', mode: 'joined', marks: ['a'] },
     { n: 3, title: 'Kasra and ḍamma', covers: 'The i and u vowels, then long ee (ي) and oo (و).', mode: 'sounds', marks: ['a', 'i', 'u'] },
     { n: 4, title: 'Tanwīn and sukūn', covers: 'an / in / un, letters with sukūn, and the bouncing qalqala letters.', mode: 'sounds', marks: ['a', 'i', 'u', 'an', 'in', 'un'] },
@@ -188,11 +262,11 @@
      uses: which settings apply (marks = vowel marks, len = row length, words = groups per row) */
   Q.MODES = [
     { id: 'names', kind: 'read', label: 'Letter names', short: 'Names', desc: 'See a letter, say its name.', uses: ['len'] },
-    { id: 'sounds', kind: 'read', label: 'Read the sounds', short: 'Sounds', desc: 'Letters with vowels. Say ba, bi, bu…', uses: ['marks', 'len'], sound: true },
+    { id: 'sounds', kind: 'read', label: 'Read the sounds', short: 'Sounds', desc: 'Letters with vowels. Say {baa:a}, {baa:i}, {baa:u}…', uses: ['marks', 'len'], sound: true },
     { id: 'joined', kind: 'read', label: 'Joined letters', short: 'Joined', desc: 'Short joined groups, syllable by syllable.', uses: ['marks', 'words'], sound: true },
-    { id: 'q-sound', kind: 'quiz', label: 'Letter → sound', short: 'Letter→sound', desc: 'See بَ, pick its transliteration: ba.', uses: ['marks'], sound: true },
-    { id: 'q-letter', kind: 'quiz', label: 'Sound → letter', short: 'Sound→letter', desc: 'See "kha", pick the right letter.', uses: ['marks'], sound: true },
-    { id: 'quiz', kind: 'quiz', label: 'Letter ↔ name', short: 'Names quiz', desc: 'Names both ways: ب is Baa.', uses: [] },
+    { id: 'q-sound', kind: 'quiz', label: 'Letter → sound', short: 'Letter→sound', desc: 'See صَ, pick its transliteration: {Saad:a}.', uses: ['marks'], sound: true },
+    { id: 'q-letter', kind: 'quiz', label: 'Sound → letter', short: 'Sound→letter', desc: 'See “{khaa:a}”, pick the right letter.', uses: ['marks'], sound: true },
+    { id: 'quiz', kind: 'quiz', label: 'Letter ↔ name', short: 'Names quiz', desc: 'Names both ways: ب is {name:baa}.', uses: [] },
   ];
   Q.MODE = Object.fromEntries(Q.MODES.map(m => [m.id, m]));
 

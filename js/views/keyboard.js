@@ -131,7 +131,7 @@
         h('div', null, h('h1', null, 'Keyboard'),
           h('p', null, 'Type Arabic with your normal keyboard, using the same keys as the Lexilogos Quranic keyboard. Each letter you type is named underneath. Try ', h('kbd', { class: 'key' }, 'b=is=om=i'), ' for بِسْمِ.'))),
       h('section', { class: 'card stack' }, toolbar, h('div', { class: 'frame kb-frame' }, ta), fontNote),
-      h('section', { class: 'card' }, h('div', { class: 'card-head' }, h('h2', null, 'Letter by letter'), h('span', { class: 'small muted' }, 'Name · keys · sound')), breakdown),
+      h('section', { class: 'card' }, h('div', { class: 'card-head' }, h('h2', null, 'Letter by letter'), h('div', { class: 'row' }, h('span', { class: 'small muted' }, 'Name · keys · sound'), Q.schemeSwitch(() => update()))), breakdown),
       h('div', { class: 'split' },
         h('section', { class: 'card stack' },
           h('h2', null, 'Click to insert'),
