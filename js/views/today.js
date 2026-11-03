@@ -122,7 +122,7 @@
                 h('div', { class: 'bar' }, h('i', { style: { width: Math.round(m * 100) + '%' } }))),
               h('span', { class: 'tag' }, Q.store.LEVELS[Q.store.level(l.id)])))),
           pairsToday.length ? h('div', { class: 'stack', style: { gap: '0' } }, h('div', { class: 'eyebrow', style: { marginTop: '6px' } }, 'You often mix up'), pairsToday.map(Q.mixPairRow)) : null,
-          h('button', { class: 'btn primary', type: 'button', onclick: () => { const sp = Q.store.weakSpots(); Q.practiceOnly = sp.ids.length ? sp.ids : weak.map(x => x.l.id); Q.practiceWhy = sp.ids.length ? sp.why : null; Q.go('practice'); } }, 'Practise my weak spots'))
+          h('button', { class: 'btn primary', type: 'button', onclick: () => { Q.store.setPractice('focus', 'weak'); Q.go('practice'); } }, 'Practise my weak spots'))
         : h('p', { class: 'empty' }, 'Do a few rounds of practice and the letters you miss most will show up here.'));
 
     /* quick start */

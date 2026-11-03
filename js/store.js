@@ -13,7 +13,7 @@
       settings: { goal: 150, font: 'hafs', theme: 'system', ramadan: '', iqraBook: 1, iqraPage: '', translit: 'pt' },
       practice: {
         mode: 'sounds', groups: Q.GROUPS.map(g => g.id), marks: ['a'], rowLen: 4, words: 2,
-        rounds: 12, focusWeak: true, lookalikes: true, showKeys: true, hideSetup: false,
+        rounds: 12, focusWeak: true, lookalikes: true, showKeys: true, hideSetup: false, focus: 'all',
       },
       letters: {},     // id -> { n, w, last, hist }
       modes: {},       // mode -> { n, w }
@@ -295,11 +295,12 @@
     },
     /* Your weak spots: struggling letters plus the letters you mix them up with.
        Returns { ids, why: { id: reason } }, or ids = [] when there is not enough practice yet. */
-    weakSpots(max = 12) {
+    weakSpots(max = 12, allowedIds = null) {
       const why = {};
       const ids = [];
-      const add = (id, reason) => { if (!Q.L[id] || ids.length >= max) return; if (!ids.includes(id)) ids.push(id); if (!why[id]) why[id] = reason; };
-      const weak = store.weakest(10, 3).filter(x => x.m < 0.7);
+      const ok = id => Q.L[id] && (!allowedIds || allowedIds.includes(id));
+      const add = (id, reason) => { if (!ok(id) || ids.length >= max) return; if (!ids.includes(id)) ids.push(id); if (!why[id]) why[id] = reason; };
+      const weak = store.weakest(29, 3).filter(x => x.m < 0.7 && ok(x.l.id)).slice(0, 10);
       weak.forEach(({ l }) => {
         add(l.id, store.LEVELS[store.level(l.id)].toLowerCase());
         store.partners(l.id).slice(0, 2).forEach(p => add(p.id, 'you mix it up with ' + l.name));

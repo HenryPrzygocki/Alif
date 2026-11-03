@@ -20,8 +20,7 @@
     if (!Q.MODE[cfg.mode]) cfg.mode = 'sounds';
     let session = null;
     let round = null;
-    let only = Q.practiceOnly || null;   // temporary letter list (e.g. "my weak spots")
-    let onlyWhy = Q.practiceWhy || null; // why each letter is in it
+    let only = Q.practiceOnly || null;   // temporary letter list, e.g. one mix-up pair from Progress
     Q.practiceOnly = null; Q.practiceWhy = null;
     let advanceTimer = null;
 
@@ -48,25 +47,38 @@
     }
 
     /* ---------------- pool & generation ---------------- */
-    function pool() {
-      let ids = only && only.length ? only.slice()
-        : Q.LETTERS.filter(l => cfg.groups.includes(l.group)).map(l => l.id);
+    /* The letters you selected below are the limit: nothing outside them is ever shown,
+       not as a question, an option, a mix-up partner or a "said instead" choice. */
+    function selected() {
+      let ids = Q.LETTERS.filter(l => cfg.groups.includes(l.group)).map(l => l.id);
       if (mode().sound) ids = ids.filter(id => !Q.L[id].noSound);
       return ids;
+    }
+    /* a narrower focus inside the selection: a pair from Progress, or your weak spots */
+    function focusIds() {
+      if (only && only.length) return only;
+      if (cfg.focus === 'weak' && session && session.focusIds && session.focusIds.length) return session.focusIds;
+      return null;
+    }
+    function pool() {
+      const sel = selected();
+      const f = focusIds();
+      return f ? f.filter(id => sel.includes(id)) : sel;
+    }
+    /* letters allowed as quiz options; falls back to all only if fewer than 2 are selected */
+    function allowed() {
+      const sel = selected();
+      return new Set(sel.length >= 2 ? sel : Q.LETTERS.map(l => l.id));
     }
     const marks = () => cfg.marks && cfg.marks.length ? cfg.marks : ['a'];
 
     /* Picking letters: weak ones come up more often, but never back to back, and with surprises.
        - weak letters are at most about 2.5× as likely as strong ones
        - the last few letters you saw (about half the pool, up to 4) sit out
-       - 1 pick in 4 is plain random; with a focus list (e.g. "Weakest 6"), 1 in 4 comes from outside it */
+       - 1 pick in 4 is plain random; with a focus (weak spots, a pair), 1 in 4 comes from the rest of your selection */
     let recent = [];
     const remember = id => { recent.push(id); if (recent.length > 12) recent.shift(); };
-    function widePool() {
-      let ids = Q.LETTERS.filter(l => cfg.groups.includes(l.group)).map(l => l.id);
-      if (mode().sound) ids = ids.filter(id => !Q.L[id].noSound);
-      return ids;
-    }
+    const widePool = selected;
     const weightOf = id => {
       if (!cfg.focusWeak) return 1;
       return 1 + 1.5 * Math.min(1, Math.max(0, (store.weight(id) - 0.8) / 4));
@@ -78,7 +90,7 @@
       if (!choices.length) choices = ids.filter(x => !avoid.includes(x) && x !== recent[recent.length - 1]);
       if (!choices.length) choices = ids.filter(x => !avoid.includes(x));
       if (!choices.length) choices = ids;
-      if (only && Math.random() < 0.25) {
+      if (focusIds() && Math.random() < 0.25) {
         const wider = widePool().filter(x => !ids.includes(x) && !resting.has(x) && !avoid.includes(x));
         if (wider.length) return Q.pick(wider);
       }
@@ -90,7 +102,7 @@
       // the letter you usually mix this one up with (your own mix-ups) comes right after it
       if (prev && !id) {
         const mine = store.partners(prev).map(p => p.id).filter(x => ids.includes(x) && x !== prev && !avoid.includes(x));
-        if (mine.length && Math.random() < (only ? 0.45 : 0.25)) id = mine[0];
+        if (mine.length && Math.random() < (focusIds() ? 0.45 : 0.25)) id = mine[0];
       }
       if (!id && cfg.lookalikes && prev && Math.random() < 0.3) {
         const like = (Q.L[prev].like || []).filter(x => ids.includes(x) && x !== prev && !avoid.includes(x) && !recent.slice(-3).includes(x));
@@ -148,9 +160,10 @@
 
     function syllableOptions(target, v) {
       const opts = [];
+      const ok = allowed();
       const seenKey = new Set(), seenSound = new Set();
       const add = (id, vv) => {
-        if (opts.length >= 4 || !Q.L[id] || Q.L[id].noSound) return;
+        if (opts.length >= 4 || !Q.L[id] || Q.L[id].noSound || (id !== target && !ok.has(id))) return;
         const sy = Q.syllable(id, vv);
         if (seenKey.has(id + ':' + vv) || seenSound.has(plain(sy.sound))) return;
         seenKey.add(id + ':' + vv); seenSound.add(plain(sy.sound));
@@ -179,7 +192,8 @@
         const near = [...new Set([...(l.like || []), ...(l.soundLike || [])])].filter(x => x !== target);
         const set = new Set([target]);
         const names = new Set([plain(l.name)]);
-        const tryAdd = x => { if (Q.L[x] && set.size < 4 && !set.has(x) && !names.has(plain(Q.L[x].name))) { set.add(x); names.add(plain(Q.L[x].name)); } };
+        const ok = allowed();
+        const tryAdd = x => { if (Q.L[x] && ok.has(x) && set.size < 4 && !set.has(x) && !names.has(plain(Q.L[x].name))) { set.add(x); names.add(plain(Q.L[x].name)); } };
         store.partners(target).slice(0, 2).forEach(p => tryAdd(p.id));
         Q.shuffle(near).forEach(tryAdd);
         Q.shuffle(Q.LETTERS.map(x => x.id)).forEach(tryAdd);
@@ -198,7 +212,23 @@
     /* ---------------- session flow ---------------- */
     function startSession() {
       finishSession(false);
-      session = { mode: cfg.mode, total: cfg.rounds, done: [], n: 0, w: 0, ms: 0, rMs: 0, rUnits: 0, streak: 0, bestStreak: 0, missed: new Map() };
+      const before = {};
+      Q.LETTERS.forEach(l => { before[l.id] = store.mastery(l.id); });
+      session = { mode: cfg.mode, total: cfg.rounds, done: [], n: 0, w: 0, ms: 0, rMs: 0, rUnits: 0, streak: 0, bestStreak: 0, missed: new Map(), before, seen: new Set() };
+      if (cfg.focus === 'weak' && !only) {
+        const spots = store.weakSpots(12, selected());
+        session.focusIds = spots.ids;
+        session.why = spots.why;
+        session.intro = true;
+        round = null;
+        renderIntro();
+        return;
+      }
+      newRound();
+    }
+    function beginAfterIntro() {
+      if (!session || !session.intro) return;
+      session.intro = false;
       newRound();
     }
     function finishSession(show) {
@@ -237,6 +267,7 @@
         revealMs: round.revealMs, activeMs,
       });
       const wrong = round.units.filter(u => u.wrong);
+      round.units.forEach(u => session.seen.add(u.letter));
       session.n += round.units.length; session.w += wrong.length; session.ms += Math.min(activeMs, 90000);
       if (round.revealMs < 60000) { session.rMs += round.revealMs; session.rUnits += round.units.length; }
       wrong.forEach(u => session.missed.set(u.letter, (session.missed.get(u.letter) || 0) + 1));
@@ -266,6 +297,7 @@
       const ms = performance.now() - round.shownAt;
       const wrong = store.recordQuiz({ mode: cfg.mode, target: round.target, picked: o.letter, vowel: round.vowel, pickedVowel: o.vowel, ms });
       round.wrong = wrong;
+      session.seen.add(round.target);
       session.n++;
       session.ms += Math.min(ms, 60000);
       if (wrong) {
@@ -304,7 +336,7 @@
         h('div', { class: 'row' },
           h('span', { class: 'eyebrow' }, mode().label),
           h('span', { class: 'tag' + (isQuiz() ? ' auto' : '') }, isQuiz() ? 'Checked for you' : 'You mark yourself'),
-          only ? h('span', { class: 'tag' }, 'Focused: ' + only.map(id => Q.L[id].ch).join(' ')) : null),
+          only ? h('span', { class: 'tag' }, 'Only ' + pool().map(id => Q.L[id].ch).join(' ')) : cfg.focus === 'weak' && focusIds() ? h('span', { class: 'tag streak' }, 'Weak spots') : null),
         h('div', { class: 'row' },
           isQuiz() && session.streak >= 3 ? h('span', { class: 'tag streak' }, session.streak + ' in a row') : null,
           dots,
@@ -365,7 +397,7 @@
     function saidChips(u) {
       const l = Q.L[u.letter];
       const cands = [...new Set([...store.partners(u.letter).map(p => p.id), ...(l.like || []), ...(l.soundLike || [])])]
-        .filter(id => Q.L[id] && id !== u.letter && !(mode().sound && Q.L[id].noSound)).slice(0, 5);
+        .filter(id => Q.L[id] && id !== u.letter && selected().includes(id)).slice(0, 5);
       if (!cands.length) return null;
       return h('div', { class: 'said' },
         h('span', null, 'Said instead?'),
@@ -471,11 +503,13 @@
       stageEl.replaceChildren(h('div', { class: 'summary' },
         h('div', null,
           h('div', { class: 'big num' }, Q.pct(acc)),
-          h('div', { class: 'muted' }, `${session.n} answered · ${session.w} missed · ${Q.fmtDuration(session.ms)}`)),
+          h('div', { class: 'muted' }, `${session.n} answered · ${session.w} missed · ${Q.fmtDuration(session.ms)}`),
+          recentAverage(acc)),
         h('div', { class: 'summary-facts' },
           mine != null ? h('div', { class: 'stat' }, h('span', { class: 'v' }, mine.toFixed(1), h('small', null, 's')), h('span', { class: 'k' }, `per letter${avg != null ? ` · your average ${avg.toFixed(1)} s` : ''}`)) : null,
           session.bestStreak ? h('div', { class: 'stat' }, h('span', { class: 'v' }, session.bestStreak), h('span', { class: 'k' }, 'best run in a row')) : null,
           h('div', { class: 'stat' }, h('span', { class: 'v' }, Q.fmtInt(store.today().n)), h('span', { class: 'k' }, `today · goal ${store.state.settings.goal}`))),
+        movement(),
         missed.length
           ? h('div', { class: 'stack' }, h('div', { class: 'eyebrow' }, 'Missed this time'),
             h('div', { class: 'missed' }, missed.map(id => {
@@ -489,9 +523,63 @@
           h('button', { class: 'btn primary lg', type: 'button', onclick: () => { only = null; renderSetup(); startSession(); } }, 'New session', h('kbd', null, 'Space'))));
     }
 
+    /* accuracy this session compared with the last 7 days before today */
+    function recentAverage(acc) {
+      if (acc == null) return null;
+      const past = store.series(8).slice(0, -1).filter(d => d.n);
+      const n = past.reduce((a, d) => a + d.n, 0), w = past.reduce((a, d) => a + d.w, 0);
+      if (n < 20) return null;
+      const avg = 1 - w / n, diff = acc - avg;
+      const cls = diff > 0.02 ? 'up' : diff < -0.02 ? 'down' : 'flat';
+      const word = cls === 'up' ? `${Math.round(diff * 100)} points above` : cls === 'down' ? `${Math.round(-diff * 100)} points below` : 'about the same as';
+      return h('div', { class: 'vs-avg ' + cls }, `${word} your recent average (${Q.pct(avg)})`);
+    }
+    /* which letters got stronger or weaker during this session */
+    function movement() {
+      const rows = [...session.seen].map(id => {
+        const b = session.before[id], a = store.mastery(id);
+        return { id, b, a, d: (a || 0) - (b || 0) };
+      }).filter(x => x.a != null && Math.abs(x.d) >= 0.01).sort((x, y) => Math.abs(y.d) - Math.abs(x.d)).slice(0, 8);
+      if (!rows.length) return null;
+      const pct = x => x == null ? 'new' : Math.round(x * 100) + '%';
+      return h('div', { class: 'stack movement-box' },
+        h('div', { class: 'eyebrow' }, 'How your letters moved'),
+        h('div', { class: 'movement' }, rows.map(x => h('div', { class: 'mv ' + (x.d > 0 ? 'up' : 'down') },
+          h('span', { class: 'ar' }, Q.L[x.id].ch),
+          h('span', { class: 'mv-name' }, Q.L[x.id].name),
+          h('span', { class: 'num' }, `${pct(x.b)} → ${pct(x.a)}`),
+          h('b', { class: 'num' }, (x.d > 0 ? '▲ ' : '▼ ') + Math.round(Math.abs(x.d) * 100))))),
+        h('p', { class: 'small muted' }, 'Strength of each letter, from your last 12 tries.'));
+    }
+
+    /* before a weak-spots session: what will be practised and why */
+    function renderIntro() {
+      const ids = session.focusIds || [];
+      const sel = selected();
+      const pairs = store.mixups(6, 2).filter(p => sel.includes(p.a) && sel.includes(p.b));
+      stageTop.replaceChildren(h('div', { class: 'row' }, h('span', { class: 'eyebrow' }, mode().label), h('span', { class: 'tag streak' }, 'Weak spots')), h('div', { class: 'row' }, optionsButton()));
+      stageEl.style.removeProperty('--glyph-size');
+      stageEl.replaceChildren(h('div', { class: 'summary intro' },
+        ids.length
+          ? [h('h2', null, 'Your weak spots'),
+            h('div', { class: 'spot-list' }, ids.map(id => h('div', { class: 'spot' },
+              h('span', { class: 'ar' }, Q.L[id].ch), h('b', null, Q.L[id].name), h('span', { class: 'small muted' }, (session.why || {})[id] || '')))),
+            pairs.length ? h('p', { class: 'small' }, 'Mixed up most: ', pairs.map((p, i) => [i ? ' · ' : '', h('span', { class: 'ar inline' }, Q.L[p.a].ch + ' ⇄ ' + Q.L[p.b].ch), ` ${p.count}×`])) : null,
+            h('p', { class: 'small muted' }, 'Only letters from your selection. The rest of your selected letters still come up now and then.')]
+          : [h('h2', null, 'No weak spots yet'),
+            h('p', { class: 'muted' }, 'None of your selected letters are weak right now, or there is not enough practice yet. This session uses all your selected letters; weak ones will show up here as you go.')]));
+      actionsEl.replaceChildren(h('div', { class: 'hint' }, ''),
+        h('div', { class: 'row' }, h('button', { class: 'btn primary lg', type: 'button', onclick: beginAfterIntro }, 'Start', h('kbd', null, 'Space'))));
+    }
+
     function renderEmpty() {
       stageTop.replaceChildren(h('span', { class: 'eyebrow' }, mode().label), h('div', { class: 'row' }, optionsButton()));
-      stageEl.replaceChildren(h('div', { class: 'summary' }, h('h2', null, 'Pick some letters'), h('p', { class: 'muted' }, 'Choose at least one letter group in the options to start.')));
+      const f = focusIds();
+      stageEl.replaceChildren(h('div', { class: 'summary' },
+        f && selected().length
+          ? [h('h2', null, 'These letters are not selected'), h('p', { class: 'muted' }, `${f.map(id => Q.L[id].name).join(' and ')} ${f.length === 1 ? 'is' : 'are'} outside the letter groups you selected. Turn their group on in the options, or clear the focus.`),
+            h('button', { class: 'btn', type: 'button', onclick: () => { only = null; renderSetup(); startSession(); } }, 'Practise all selected letters')]
+          : [h('h2', null, 'Pick some letters'), h('p', { class: 'muted' }, 'Choose at least one letter group in the options to start.')]));
       actionsEl.replaceChildren();
     }
 
@@ -499,7 +587,7 @@
     function set(k, v, restart) {
       store.setPractice(k, v);
       renderSetup();
-      if (restart === 'session' || !session || session.over) startSession();
+      if (restart === 'session' || !session || session.over || session.intro || (k === 'groups' && cfg.focus === 'weak')) startSession();
       else newRound();
     }
 
@@ -535,19 +623,12 @@
           h('div', { class: 'row', style: { gap: '4px' } },
             h('button', { class: 'btn ghost', type: 'button', style: small, onclick: () => { only = null; set('groups', allOn ? [] : Q.GROUPS.map(g => g.id)); } }, allOn ? 'None' : 'All'),
             h('button', {
-              class: 'btn ghost', type: 'button', style: small, title: 'Your struggling letters plus the letters you mix them up with',
-              onclick: () => {
-                const spots = store.weakSpots();
-                if (!spots.ids.length) { Q.toast('Practise a little more first so I can find your weak spots'); return; }
-                only = spots.ids; onlyWhy = spots.why; renderSetup(); startSession();
-              },
-            }, 'My weak spots'))),
-        only ? h('div', { class: 'focus-box' },
-          h('div', { class: 'row', style: { justifyContent: 'space-between' } },
-            h('span', { class: 'small muted' }, onlyWhy ? 'Your weak spots' : 'Only these letters'),
-            h('button', { class: 'btn ghost', type: 'button', style: small, onclick: () => { only = null; onlyWhy = null; renderSetup(); startSession(); } }, 'Clear')),
-          h('div', { class: 'chips' }, only.map(id => h('span', { class: 'chip static', title: onlyWhy && onlyWhy[id] ? Q.L[id].name + ': ' + onlyWhy[id] : Q.L[id].name },
-            h('span', { class: 'ar' }, Q.L[id].ch), onlyWhy && onlyWhy[id] ? h('span', { class: 'why' }, onlyWhy[id]) : null)))) : null,
+              class: 'chip', type: 'button', 'aria-pressed': String(cfg.focus === 'weak'),
+              title: 'Focus on your weak letters and the letters you mix them up with, within the groups below',
+              onclick: () => { only = null; set('focus', cfg.focus === 'weak' ? 'all' : 'weak', 'session'); },
+            }, 'Weak spots'))),
+        only ? h('div', { class: 'row small' }, h('span', { class: 'muted' }, 'Only'), h('span', { class: 'ar', style: { fontSize: '20px' } }, only.map(id => Q.L[id].ch).join(' ')),
+          h('button', { class: 'btn ghost', type: 'button', style: small, onclick: () => { only = null; renderSetup(); startSession(); } }, 'Clear')) : null,
         h('div', { class: 'chips' }, Q.GROUPS.map(g => {
           const on = cfg.groups.includes(g.id);
           return h('button', {
@@ -596,6 +677,7 @@
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
+        if (session && session.intro) { beginAfterIntro(); return; }
         if (!round) { startSession(); return; }
         next();
         return;
