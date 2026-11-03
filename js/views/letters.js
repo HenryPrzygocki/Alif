@@ -46,12 +46,15 @@
         h('div', { class: 'eyebrow' }, 'With vowels'),
         h('div', { class: 'vowel-row' }, ['a', 'i', 'u'].map(v => {
           const sy = Q.syllable(selected, v);
-          return h('button', { type: 'button', class: 'vowel-btn', title: 'Hear ' + sy.sound, onclick: () => Q.hearLetter(selected, v) }, h('span', { class: 'ar' }, sy.text), h('b', null, sy.sound), h('span', { class: 'small muted' }, Q.VOWELS[v].name + ' · ▶'));
+          const kids = [h('span', { class: 'ar' }, sy.text), h('b', null, sy.sound), h('span', { class: 'small muted' }, Q.VOWELS[v].name + (Q.letterAudioOn() ? ' · ▶' : ''))];
+          return Q.letterAudioOn()
+            ? h('button', { type: 'button', class: 'vowel-btn', title: 'Hear ' + sy.sound, onclick: () => Q.hearLetter(selected, v) }, kids)
+            : h('div', null, kids);
         })));
       const like = (l.like || []).map(id => Q.L[id]);
-      const hearEl = h('div', { class: 'stack', style: { gap: '8px' } }, h('div', { class: 'eyebrow' }, 'Hear it'), h('p', { class: 'small muted' }, 'Loading…'));
+      const hearEl = Q.letterAudioOn() ? h('div', { class: 'stack', style: { gap: '8px' } }, h('div', { class: 'eyebrow' }, 'Hear it')) : null;
       currentHearEl = hearEl;
-      fillHear(hearEl, selected);
+      if (hearEl) fillHear(hearEl, selected);
       detailEl.replaceChildren(
         h('div', { class: 'hero' },
           h('span', { class: 'ar' }, l.ch),
@@ -80,28 +83,15 @@
           'Practise ' + l.name + ' and its look-alikes'));
     }
 
-    /* Teacher clips for this letter, then real Quran words where you can hear it */
+    /* Hear the letter (only when letter audio is switched on, see js/voice.js) */
     async function fillHear(el, id) {
+      if (!el) return;
       const l = Q.L[id];
-      const kids = [h('div', { class: 'eyebrow' }, 'Hear it')];
-      const keys = await Q.voice.keys();
-      const mine = [['name:' + id, l.name], ...['a', 'i', 'u'].map(v => ['sound:' + id + ':' + v, Q.syllable(id, v).sound])].filter(([k]) => keys.has(k));
-      if (mine.length) {
-        kids.push(h('div', { class: 'row' }, h('span', { class: 'small muted' }, 'Your teacher:'),
-          mine.map(([k, label]) => h('button', { class: 'btn sm', type: 'button', onclick: () => Q.voice.play(k) }, '▶ ' + label))));
-      }
-      const ex = await Q.letterExamples(id);
-      if (ex.length) {
-        kids.push(h('div', { class: 'small muted' }, 'In the Quran, recited:'));
-        kids.push(h('div', { class: 'examples' }, ex.map(e => {
-          const cl = Q.clusters(e.ar);
-          const word = h('span', { class: 'ar' }, cl.map((c, i) => h('span', { class: i === e.pos ? 'hl' : '' }, c.base + c.marks.join(''))));
-          return h('button', { class: 'example', type: 'button', onclick: () => Q.audio.word(e.s, e.v, e.w, 'husary').catch(() => Q.toast('Could not play the audio. Check your connection.')) },
-            word, h('span', { class: 'tr' }, Q.verseTranslit([e.ar], Q.SCHEME === 'en' ? 'en' : 'pt')[0]), h('span', { class: 'small muted' }, `${e.s}:${e.v} ▶`));
-        })));
-      }
-      if (Q.voice.available) kids.push(h('button', { class: 'btn ghost sm', type: 'button', onclick: () => { recCard.scrollIntoView({ behavior: 'smooth', block: 'start' }); rec.jump(id); } }, mine.length ? 'Re-record with your teacher' : '● Record your teacher saying it'));
-      if (el) el.replaceChildren(...kids);
+      const items = [[null, l.name], ...(l.noSound ? [] : ['a', 'i', 'u'].map(v => [v, Q.syllable(id, v).sound]))];
+      const kids = [h('div', { class: 'eyebrow' }, 'Hear it'),
+        h('div', { class: 'row' }, items.map(([v, label]) => h('button', { class: 'btn sm', type: 'button', onclick: () => Q.hearLetter(id, v) }, '▶ ' + label)))];
+      if (Q.teacherRecordingOn()) kids.push(h('button', { class: 'btn ghost sm', type: 'button', onclick: () => { recCard.scrollIntoView({ behavior: 'smooth', block: 'start' }); rec.jump(id); } }, '● Record your teacher saying it'));
+      el.replaceChildren(...kids);
     }
 
     /* Record your teacher: walk through the letters, one clip each */
@@ -237,17 +227,17 @@
         h('div', { class: 'field' }, h('span', { class: 'label' }, 'Transliteration'), Q.schemeSwitch(() => { renderGroups(); renderDetail(); renderGuide(); }))),
       h('div', { class: 'letters-layout' }, h('section', { class: 'card' }, groupsEl), detailEl),
       guide,
-      Q.voice.available ? recCard : null,
+      Q.teacherRecordingOn() ? recCard : null,
       marks));
 
     renderGroups();
     renderDetail();
     renderGuide();
-    if (Q.voice.available) rec.draw();
+    if (Q.teacherRecordingOn()) rec.draw();
     const onKey = e => {
       const t = e.target;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
-      if (Q.voice.available) rec.key(e);
+      if (Q.teacherRecordingOn()) rec.key(e);
     };
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('keydown', onKey); rec.dispose(); Q.voice.stop(); };

@@ -25,7 +25,7 @@
       like: ['taa', 'thaa', 'noon', 'yaa'], soundLike: [],
       tip: 'Like the b in "bat". One dot below.' },
     { id: 'taa', ch: 'ت', name: 'Taa', key: 't', tr: 't', joins: true, group: 'baa',
-      like: ['baa', 'thaa', 'noon', 'yaa'], soundLike: ['taaH'],
+      like: ['baa', 'thaa', 'noon', 'yaa'], soundLike: ['Taa'],
       tip: 'A light t. Tongue tip touches just behind the upper front teeth. Two dots above.' },
     { id: 'thaa', ch: 'ث', name: 'Thaa', key: "t'", tr: 'th', joins: true, group: 'baa',
       like: ['taa', 'baa', 'noon'], soundLike: ['seen', 'dhaal'],

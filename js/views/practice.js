@@ -136,14 +136,18 @@
     }
 
     /* Quiz options: the right answer plus look-alikes, sound-alikes and other vowels */
+    /* Spellings that differ only by a dot, an accent or ʿ/' (ḥá/há, ṣa/sa, ʿá/á) look the same here,
+       so two of them never appear as options together: the quiz tests the letter, not the dot. */
+    const plain = str => String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[ʿʾ'’]/g, '').toLowerCase();
+
     function syllableOptions(target, v) {
       const opts = [];
       const seenKey = new Set(), seenSound = new Set();
       const add = (id, vv) => {
         if (opts.length >= 4 || !Q.L[id] || Q.L[id].noSound) return;
         const sy = Q.syllable(id, vv);
-        if (seenKey.has(id + ':' + vv) || seenSound.has(sy.sound)) return;
-        seenKey.add(id + ':' + vv); seenSound.add(sy.sound);
+        if (seenKey.has(id + ':' + vv) || seenSound.has(plain(sy.sound))) return;
+        seenKey.add(id + ':' + vv); seenSound.add(plain(sy.sound));
         opts.push({ letter: id, vowel: vv, text: sy.text, sound: sy.sound });
       };
       add(target, v);
@@ -167,8 +171,10 @@
       if (cfg.mode === 'quiz') {
         const near = [...new Set([...(l.like || []), ...(l.soundLike || [])])].filter(x => x !== target);
         const set = new Set([target]);
-        Q.shuffle(near).forEach(x => { if (set.size < 4) set.add(x); });
-        Q.shuffle(Q.LETTERS.map(x => x.id)).forEach(x => { if (set.size < 4) set.add(x); });
+        const names = new Set([plain(l.name)]);
+        const tryAdd = x => { if (Q.L[x] && set.size < 4 && !set.has(x) && !names.has(plain(Q.L[x].name))) { set.add(x); names.add(plain(Q.L[x].name)); } };
+        Q.shuffle(near).forEach(tryAdd);
+        Q.shuffle(Q.LETTERS.map(x => x.id)).forEach(tryAdd);
         const dir = Math.random() < 0.5 ? 'toLetter' : 'toName';
         return { kind: 'quiz', target, dir, options: Q.shuffle([...set]).map(id => ({ letter: id, text: Q.L[id].ch, label: Q.L[id].name })), picked: null };
       }
@@ -321,7 +327,7 @@
               round.units.length > 1 ? h('span', { class: 'idx' }, i + 1) : null,
               h('span', { class: 'glyph' }, u.text),
               h('span', { class: 'ans' + (round.revealed ? ' show' : ' hide') }, answerLabel(u))),
-            round.revealed ? h('button', { class: 'hear', type: 'button', title: 'Hear it', 'aria-label': 'Hear ' + Q.L[u.letter].name, onclick: () => Q.hearLetter(u.letter, cfg.mode === 'names' ? null : u.vowel) }, '▶ Hear') : null));
+            round.revealed && Q.letterAudioOn() ? h('button', { class: 'hear', type: 'button', title: 'Hear it', 'aria-label': 'Hear ' + Q.L[u.letter].name, onclick: () => Q.hearLetter(u.letter, cfg.mode === 'names' ? null : u.vowel) }, '▶ Hear') : null));
         });
         stageEl.replaceChildren(wrap);
       } else if (round.kind === 'joined') {
@@ -399,7 +405,7 @@
         msg = [h('span', { class: 'ar inline' }, round.text), ` is “${round.sound}” (${l.name}). `, h('span', { class: 'ar inline' }, p.text), ` is “${p.sound}” (${pl.name}).`];
       }
       return h('div', { class: 'feedback bad' }, h('div', null, msg), h('div', { class: 'tip' }, Q.mixed(l.tip)),
-        h('button', { class: 'btn sm', type: 'button', onclick: () => Q.hearLetter(l.id, cfg.mode === 'quiz' ? null : round.vowel) }, '▶ Hear ' + l.name));
+        Q.letterAudioOn() ? h('button', { class: 'btn sm', type: 'button', onclick: () => Q.hearLetter(l.id, cfg.mode === 'quiz' ? null : round.vowel) }, '▶ Hear ' + l.name) : null);
     }
 
     function renderActions() {

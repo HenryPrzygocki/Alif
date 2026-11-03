@@ -1,10 +1,29 @@
-/* Huruf — human voices for letters.
-   1. Your teacher's recordings, saved in this browser (IndexedDB).
-   2. Real Quran words that show each letter, from Quran.com's word-by-word recordings. */
+/* Huruf — hearing individual letters.
+
+   SWITCHED OFF for now: there is no good recording of each letter on its own yet.
+   While it is off, no "Hear" buttons or recording tools appear anywhere.
+
+   To switch it on later, set `enabled: true` below and pick a source:
+     source: 'files'    put recordings in audio/letters/ named by letter id:
+                          baa.mp3        the letter's name ("Bá")
+                          baa-a.mp3      with fatḥa ("bá")
+                          baa-i.mp3      with kasra ("bi")
+                          baa-u.mp3      with ḍamma ("bu")
+                        Letter ids are in js/data.js (alif, baa, taa, thaa, jeem, Haa, khaa, …).
+     source: 'teacher'  shows a "Record your teacher" card on the Letters page; the clips are
+                        saved in this browser and used for every Hear button.
+   Teacher clips, when they exist, are always preferred over files. */
 (function (Q) {
   'use strict';
 
-  /* ---------- teacher recordings ---------- */
+  Q.LETTER_AUDIO = {
+    enabled: false,
+    source: 'files',
+    dir: 'audio/letters/',
+    ext: 'mp3',
+  };
+
+  /* ---------- teacher recordings (IndexedDB) ---------- */
   const DB = 'huruf-voice', STORE = 'clips';
   let dbp = null;
   function db() {
@@ -25,9 +44,16 @@
       t.onerror = () => reject(t.error);
     }));
   }
-  let keys = null;   // cached set of saved keys
+  let keys = null;
   const player = new Audio();
   let playingUrl = null;
+  const playUrl = url => new Promise(res => {
+    Q.audio && Q.audio.stop();
+    player.src = url;
+    player.onended = () => res(true);
+    player.onerror = () => res(false);
+    player.play().catch(() => res(false));
+  });
 
   Q.voice = {
     /* keys look like "name:baa" (the letter's name) or "sound:baa:a" (bá, bi, bu…) */
@@ -41,16 +67,17 @@
     async play(key) {
       const blob = await tx('readonly', s => s.get(key));
       if (!blob) return false;
-      Q.audio && Q.audio.stop();
       if (playingUrl) URL.revokeObjectURL(playingUrl);
       playingUrl = URL.createObjectURL(blob);
-      player.src = playingUrl;
-      await new Promise(res => { player.onended = res; player.onerror = res; player.play().catch(res); });
-      return true;
+      return playUrl(playingUrl);
     },
     stop() { player.pause(); },
-    available: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder && window.indexedDB),
+    canRecord: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder && window.indexedDB),
   };
+
+  /* Is hearing letters switched on? (and, for the recording card, is the teacher source chosen) */
+  Q.letterAudioOn = () => !!Q.LETTER_AUDIO.enabled;
+  Q.teacherRecordingOn = () => Q.letterAudioOn() && Q.LETTER_AUDIO.source === 'teacher' && Q.voice.canRecord;
 
   /* simple recorder: start() → stop() resolves a Blob */
   Q.voice.recorder = function () {
@@ -75,26 +102,15 @@
     };
   };
 
-  /* ---------- Quran example words ---------- */
-  let examples = null;
-  Q.letterExamples = async function (id) {
-    if (!examples) {
-      try { const r = await fetch('data/letter-examples.json'); examples = r.ok ? await r.json() : {}; }
-      catch (e) { examples = {}; }
-    }
-    return examples[id] || [];
-  };
-
-  /* Hear a letter: teacher recording first, else the first Quran example word */
+  /* Hear a letter (name) or a letter with a vowel. Does nothing while the switch is off. */
   Q.hearLetter = async function (id, vowel) {
+    if (!Q.letterAudioOn()) return false;
     const k = vowel ? `sound:${id}:${vowel}` : `name:${id}`;
     if (await Q.voice.has(k)) return Q.voice.play(k);
-    if (vowel && await Q.voice.has(`sound:${id}:a`)) return Q.voice.play(`sound:${id}:a`);
-    const ex = await Q.letterExamples(id);
-    const pick = (vowel && ex.find(e => e.vowel === vowel)) || ex[0];
-    if (!pick) return false;
-    Q.voice.stop();
-    await Q.audio.word(pick.s, pick.v, pick.w, 'husary').catch(() => Q.toast('Could not play the audio. Check your connection.'));
-    return true;
+    if (Q.LETTER_AUDIO.source !== 'files') return false;
+    const { dir, ext } = Q.LETTER_AUDIO;
+    const ok = await playUrl(`${dir}${id}${vowel ? '-' + vowel : ''}.${ext}`);
+    if (!ok && vowel) return playUrl(`${dir}${id}.${ext}`);
+    return ok;
   };
 })(window.Q = window.Q || {});

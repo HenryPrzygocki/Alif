@@ -10,7 +10,7 @@ A personal practice desk for learning to read the Quran and memorize surahs. It 
 | **Review** | Spaced review of every verse you have learned: back after 1 day, 3, 7, 14, 30, 60. Say it, reveal, grade yourself |
 | **Today** | Ramadan countdown (first taraweeh Sun 7 Feb 2027, first fast Mon 8 Feb), your Iqra book and pace, today's goal, your trickiest letters, quick-start drills |
 | **Practice** | *Read aloud* (you mark yourself): Letter names, Read the sounds (fatḥa / kasra / ḍamma / tanwīn), Joined letters. Say the row, reveal, click what you missed. *Quiz* (the site checks): Letter → sound, Sound → letter, Letter ↔ name, with look-alike distractors and an explanation when you miss. Transliteration in **Português (Brasil)** (só, chá, rhó; Iqra style) or **English** (ṣa, sha, kha), switchable anywhere. Weak letters come up more often. Keyboard: `Space` reveal/next, `1`–`9` mark or answer, `O` hide options |
-| **Letters** | All 28 letters + hamza grouped by shape, with name, sound, pronunciation tip, positional forms, vowels, look-alikes and your record. **Hear it**: real Quran words that show the letter (recited), plus **Record your teacher**: capture your tutor saying each name and sound; their voice then plays on every ▶ Hear. Vowel-mark reference |
+| **Letters** | All 28 letters + hamza grouped by shape, with name, sound, pronunciation tip, positional forms, vowels, look-alikes and your record. Vowel-mark reference |
 | **Keyboard** | Type Arabic with Latin keys, using the [Lexilogos Quranic keyboard](https://www.lexilogos.com/keyboard/arabic_quranic.htm) layout (`t'` → ث, `=a` → fatḥa…). Shows each letter by name as you type. Switch between Uthmani (Madani), Indo-Pak and other fonts |
 | **Progress** | Practice calendar up to Ramadan, 30-day trends (volume, accuracy, seconds per letter), mastery of every letter, mix-ups, hardest syllables, sessions |
 | **Setup** | Iqra book, daily goal, optional Ramadan date override, font, theme, backup / restore |
@@ -51,6 +51,16 @@ js/app.js           navigation, theme, font
 
 Plain JavaScript, no framework. New drills mostly mean new data in `js/data.js` plus a generator in `js/views/practice.js`.
 
+## Letter audio (switched off)
+
+Hearing individual letters is built but turned off until there is a good recording of each letter on its own.
+To turn it on, edit the top of `js/voice.js`: set `enabled: true` and either
+
+- `source: 'files'` and add recordings to `audio/letters/` — `baa.mp3` (the name), `baa-a.mp3`, `baa-i.mp3`, `baa-u.mp3`, … (letter ids are in `js/data.js`), or
+- `source: 'teacher'` to get a "Record your teacher" card on the Letters page (clips saved in the browser).
+
+Then ▶ Hear buttons appear on the Letters page, after revealing a practice row, and in quiz feedback.
+
 ## Ideas for next modules
 
 - Long vowels (بَا بِي بُو) and sukūn pairs (أَبْ) for Iqra 2–4
@@ -71,5 +81,4 @@ Plain JavaScript, no framework. New drills mostly mean new data in `js/data.js` 
 - **KFGQPC Uthmanic Script Hafs** font by the King Fahd Glorious Quran Printing Complex, and the **IndoPak Nastaleeq** font, both as distributed by [Quran.com](https://github.com/quran/quran.com-frontend-next)
 - Amiri Quran, Scheherazade New, Noto Naskh Arabic, Literata, Instrument Sans and JetBrains Mono via Google Fonts
 - Typing layout follows [Lexilogos](https://www.lexilogos.com/keyboard/arabic_quranic.htm)
-- Letter example words: picked from the bundled surahs by `tools/build_letter_examples.py`, audio from Quran.com's word-by-word recordings
 - Lesson order follows *Iqra: Cara Cepat Belajar Membaca Al-Qur'an* by KH. As'ad Humam
