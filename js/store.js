@@ -30,7 +30,7 @@
     return {
       list: [],        // surahs you are learning, most recent first
       v: {},           // "surah:verse" -> { s: stage 1-6, due: YYYY-MM-DD, n: reviews, miss: lapses, last }
-      prefs: { text: 'translit', meaning: false, trans: true, reciter: 'husary', speed: 1, repeat: 1, gap: false, loop: false, basmala: true },
+      prefs: { text: 'translit', meaning: false, trans: true, reciter: 'husary', speed: 1, repeat: 1, gap: false, loop: false, basmala: true, transLang: 'en' },
       last: null,      // { n, tab, verse }
     };
   }

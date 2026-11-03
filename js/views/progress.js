@@ -151,7 +151,7 @@
       const el = quranSection.querySelector('#progress-surahs');
       const rows = index.map(meta => ({ meta, sum: Q.store.qSummary(meta.n, meta.verses) })).filter(x => x.sum.mem || x.sum.learning);
       el.replaceChildren(...rows.map(({ meta, sum }) => h('a', { class: 'srow', href: '#surah-' + meta.n, style: { gridTemplateColumns: 'minmax(0, 1fr) minmax(120px, 2fr) 150px' } },
-        h('span', { class: 'srow-name' }, h('b', null, meta.name), h('span', { class: 'small muted' }, Q.SCHEME === 'en' ? meta.en : meta.pt)),
+        h('span', { class: 'srow-name' }, h('b', null, meta.name), h('span', { class: 'small muted' }, Q.quran.metaName(meta))),
         h('div', { class: 'qbar' }, h('i', { class: 'mem', style: { width: (sum.mem / sum.count * 100) + '%' } }), h('i', { class: 'lrn', style: { width: (sum.learning / sum.count * 100) + '%' } })),
         h('span', { class: 'small num' }, `${sum.mem} memorized · ${sum.learning} learning${sum.due ? ' · ' + sum.due + ' due' : ''}`))));
     }).catch(() => {});

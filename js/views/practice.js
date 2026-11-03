@@ -281,14 +281,16 @@
       if (round.kind === 'row') {
         const wrap = h('div', { class: 'row-units' + (round.revealed ? ' revealed' : '') });
         round.units.forEach((u, i) => {
-          wrap.append(h('button', {
-            class: 'unit' + (u.wrong ? ' wrong' : ''), type: 'button', tabindex: round.revealed ? 0 : -1,
-            'aria-label': round.revealed ? `Item ${i + 1}: ${Q.L[u.letter].name}. ${u.wrong ? 'Marked wrong' : 'Marked right'}` : `Item ${i + 1}`,
-            onclick: () => toggleUnit(i),
-          },
-            round.units.length > 1 ? h('span', { class: 'idx' }, i + 1) : null,
-            h('span', { class: 'glyph' }, u.text),
-            h('span', { class: 'ans' + (round.revealed ? ' show' : ' hide') }, answerLabel(u))));
+          wrap.append(h('div', { class: 'unit-wrap' },
+            h('button', {
+              class: 'unit' + (u.wrong ? ' wrong' : ''), type: 'button', tabindex: round.revealed ? 0 : -1,
+              'aria-label': round.revealed ? `Item ${i + 1}: ${Q.L[u.letter].name}. ${u.wrong ? 'Marked wrong' : 'Marked right'}` : `Item ${i + 1}`,
+              onclick: () => toggleUnit(i),
+            },
+              round.units.length > 1 ? h('span', { class: 'idx' }, i + 1) : null,
+              h('span', { class: 'glyph' }, u.text),
+              h('span', { class: 'ans' + (round.revealed ? ' show' : ' hide') }, answerLabel(u))),
+            round.revealed ? h('button', { class: 'hear', type: 'button', title: 'Hear it', 'aria-label': 'Hear ' + Q.L[u.letter].name, onclick: () => Q.hearLetter(u.letter, cfg.mode === 'names' ? null : u.vowel) }, '▶ Hear') : null));
         });
         stageEl.replaceChildren(wrap);
       } else if (round.kind === 'joined') {
@@ -365,7 +367,8 @@
       } else {
         msg = [h('span', { class: 'ar inline' }, round.text), ` is “${round.sound}” (${l.name}). `, h('span', { class: 'ar inline' }, p.text), ` is “${p.sound}” (${pl.name}).`];
       }
-      return h('div', { class: 'feedback bad' }, h('div', null, msg), h('div', { class: 'tip' }, Q.mixed(l.tip)));
+      return h('div', { class: 'feedback bad' }, h('div', null, msg), h('div', { class: 'tip' }, Q.mixed(l.tip)),
+        h('button', { class: 'btn sm', type: 'button', onclick: () => Q.hearLetter(l.id, cfg.mode === 'quiz' ? null : round.vowel) }, '▶ Hear ' + l.name));
     }
 
     function renderActions() {

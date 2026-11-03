@@ -46,9 +46,12 @@
         h('div', { class: 'eyebrow' }, 'With vowels'),
         h('div', { class: 'vowel-row' }, ['a', 'i', 'u'].map(v => {
           const sy = Q.syllable(selected, v);
-          return h('div', null, h('span', { class: 'ar' }, sy.text), h('b', null, sy.sound), h('span', { class: 'small muted' }, Q.VOWELS[v].name));
+          return h('button', { type: 'button', class: 'vowel-btn', title: 'Hear ' + sy.sound, onclick: () => Q.hearLetter(selected, v) }, h('span', { class: 'ar' }, sy.text), h('b', null, sy.sound), h('span', { class: 'small muted' }, Q.VOWELS[v].name + ' · ▶'));
         })));
       const like = (l.like || []).map(id => Q.L[id]);
+      const hearEl = h('div', { class: 'stack', style: { gap: '8px' } }, h('div', { class: 'eyebrow' }, 'Hear it'), h('p', { class: 'small muted' }, 'Loading…'));
+      currentHearEl = hearEl;
+      fillHear(hearEl, selected);
       detailEl.replaceChildren(
         h('div', { class: 'hero' },
           h('span', { class: 'ar' }, l.ch),
@@ -64,6 +67,7 @@
           h('div', { class: 'eyebrow' }, 'Shapes in a word'),
           h('div', { class: 'forms' }, formBox('isolated', 'alone'), formBox('initial', 'start'), formBox('medial', 'middle'), formBox('final', 'end'))),
         vowels,
+        hearEl,
         like.length ? h('div', { class: 'stack', style: { gap: '8px' } },
           h('div', { class: 'eyebrow' }, 'Easy to mix up with'),
           h('div', { class: 'chips' }, like.map(o => h('button', { class: 'chip', type: 'button', onclick: () => select(o.id) }, h('span', { class: 'ar' }, o.ch), o.name)))) : null,
@@ -75,6 +79,103 @@
         h('button', { class: 'btn', type: 'button', onclick: () => { Q.practiceOnly = [selected, ...like.map(o => o.id)].filter(id => Q.L[id]); const cur = Q.MODE[Q.store.state.practice.mode]; if (Q.L[selected].noSound && cur && cur.sound) Q.store.setPractice('mode', 'names'); Q.go('practice'); } },
           'Practise ' + l.name + ' and its look-alikes'));
     }
+
+    /* Teacher clips for this letter, then real Quran words where you can hear it */
+    async function fillHear(el, id) {
+      const l = Q.L[id];
+      const kids = [h('div', { class: 'eyebrow' }, 'Hear it')];
+      const keys = await Q.voice.keys();
+      const mine = [['name:' + id, l.name], ...['a', 'i', 'u'].map(v => ['sound:' + id + ':' + v, Q.syllable(id, v).sound])].filter(([k]) => keys.has(k));
+      if (mine.length) {
+        kids.push(h('div', { class: 'row' }, h('span', { class: 'small muted' }, 'Your teacher:'),
+          mine.map(([k, label]) => h('button', { class: 'btn sm', type: 'button', onclick: () => Q.voice.play(k) }, '▶ ' + label))));
+      }
+      const ex = await Q.letterExamples(id);
+      if (ex.length) {
+        kids.push(h('div', { class: 'small muted' }, 'In the Quran, recited:'));
+        kids.push(h('div', { class: 'examples' }, ex.map(e => {
+          const cl = Q.clusters(e.ar);
+          const word = h('span', { class: 'ar' }, cl.map((c, i) => h('span', { class: i === e.pos ? 'hl' : '' }, c.base + c.marks.join(''))));
+          return h('button', { class: 'example', type: 'button', onclick: () => Q.audio.word(e.s, e.v, e.w, 'husary').catch(() => Q.toast('Could not play the audio. Check your connection.')) },
+            word, h('span', { class: 'tr' }, Q.verseTranslit([e.ar], Q.SCHEME === 'en' ? 'en' : 'pt')[0]), h('span', { class: 'small muted' }, `${e.s}:${e.v} ▶`));
+        })));
+      }
+      if (Q.voice.available) kids.push(h('button', { class: 'btn ghost sm', type: 'button', onclick: () => { recCard.scrollIntoView({ behavior: 'smooth', block: 'start' }); rec.jump(id); } }, mine.length ? 'Re-record with your teacher' : '● Record your teacher saying it'));
+      if (el) el.replaceChildren(...kids);
+    }
+
+    /* Record your teacher: walk through the letters, one clip each */
+    const KINDS = [
+      { id: 'name', label: 'Letter names', say: l => l.name },
+      { id: 'a', label: 'With fatḥa', say: l => Q.syllable(l.id, 'a').sound, text: l => Q.syllable(l.id, 'a').text },
+      { id: 'i', label: 'With kasra', say: l => Q.syllable(l.id, 'i').sound, text: l => Q.syllable(l.id, 'i').text },
+      { id: 'u', label: 'With ḍamma', say: l => Q.syllable(l.id, 'u').sound, text: l => Q.syllable(l.id, 'u').text },
+    ];
+    const recCard = h('section', { class: 'card stack', id: 'teacher-voice' });
+    const rec = (function () {
+      let kind = 'name', idx = 0, recorder = null, busy = false;
+      const list = () => Q.LETTERS.filter(l => kind === 'name' || !l.noSound);
+      const keyOf = l => kind === 'name' ? 'name:' + l.id : `sound:${l.id}:${kind}`;
+      async function draw() {
+        const keys = await Q.voice.keys();
+        const L = list();
+        idx = Math.max(0, Math.min(idx, L.length - 1));
+        const l = L[idx];
+        const K = KINDS.find(k => k.id === kind);
+        const done = L.filter(x => keys.has(keyOf(x))).length;
+        const has = keys.has(keyOf(l));
+        const recording = recorder && recorder.recording;
+        recCard.replaceChildren(
+          h('div', { class: 'card-head' }, h('h2', null, 'Record your teacher'), h('span', { class: 'small muted' }, `${done} of ${L.length} recorded`)),
+          h('p', { class: 'small', style: { color: 'var(--ink-2)', maxWidth: '70ch' } }, 'In your next lesson, ask your teacher to say each one while you record. Their voice then plays everywhere you press ▶ Hear. Recordings stay in this browser on this computer (they are not part of the backup file).'),
+          h('div', { class: 'seg' }, KINDS.map(k => h('button', { type: 'button', 'aria-pressed': String(kind === k.id), onclick: () => { kind = k.id; draw(); } }, k.label))),
+          h('div', { class: 'rec-stage' },
+            h('button', { class: 'btn ghost', type: 'button', 'aria-label': 'Previous', onclick: () => { idx--; draw(); } }, '←'),
+            h('div', { class: 'rec-letter' },
+              h('span', { class: 'ar' }, K.text ? K.text(l) : l.ch),
+              h('b', null, 'Say: ' + K.say(l)),
+              h('span', { class: 'small ' + (has ? '' : 'muted') }, has ? '✓ Recorded' : 'Not recorded yet')),
+            h('button', { class: 'btn ghost', type: 'button', 'aria-label': 'Next', onclick: () => { idx++; draw(); } }, '→')),
+          h('div', { class: 'row', style: { justifyContent: 'center' } },
+            recording
+              ? h('button', { class: 'btn danger lg', type: 'button', onclick: stopRec }, '■ Stop', h('kbd', null, 'Space'))
+              : h('button', { class: 'btn primary lg', type: 'button', onclick: startRec }, has ? '● Record again' : '● Record', h('kbd', null, 'Space')),
+            has && !recording ? h('button', { class: 'btn', type: 'button', onclick: () => Q.voice.play(keyOf(l)) }, '▶ Play') : null,
+            has && !recording ? h('button', { class: 'btn ghost', type: 'button', onclick: async () => { await Q.voice.remove(keyOf(l)); draw(); fillHear(detailHear(), selected); } }, 'Delete') : null),
+          h('div', { class: 'rec-grid', dir: 'rtl' }, L.map((x, i) => h('button', { type: 'button', class: 'rec-dot' + (keys.has(keyOf(x)) ? ' done' : '') + (i === idx ? ' on' : ''), title: x.name, onclick: () => { idx = i; draw(); } }, K.text ? K.text(x) : x.ch))));
+      }
+      async function startRec() {
+        if (busy) return;
+        busy = true;
+        try { recorder = Q.voice.recorder(); await recorder.start(); }
+        catch (e) { Q.toast('Microphone not allowed. Check the browser’s site settings.'); recorder = null; }
+        busy = false;
+        draw();
+      }
+      async function stopRec() {
+        if (!recorder) return;
+        const blob = await recorder.stop();
+        recorder = null;
+        const l = list()[idx];
+        if (blob && blob.size) { await Q.voice.save(keyOf(l), blob); Q.toast('Saved ' + (KINDS.find(k => k.id === kind).say(l))); idx++; }
+        draw();
+        if (l.id === selected) fillHear(detailHear(), selected);
+      }
+      return {
+        draw,
+        jump(id) { const i = list().findIndex(x => x.id === id); if (i >= 0) idx = i; draw(); },
+        key(e) {
+          if (!recCard.matches(':hover') && !recCard.contains(document.activeElement) && !(recorder && recorder.recording)) return false;
+          if (e.key === ' ') { e.preventDefault(); recorder && recorder.recording ? stopRec() : startRec(); return true; }
+          if (e.key === 'ArrowRight') { idx++; draw(); return true; }
+          if (e.key === 'ArrowLeft') { idx--; draw(); return true; }
+          return false;
+        },
+        dispose() { if (recorder) recorder.dispose(); },
+      };
+    })();
+    let currentHearEl = null;
+    const detailHear = () => currentHearEl;
 
     const GUIDE = {
       en: [
@@ -136,10 +237,19 @@
         h('div', { class: 'field' }, h('span', { class: 'label' }, 'Transliteration'), Q.schemeSwitch(() => { renderGroups(); renderDetail(); renderGuide(); }))),
       h('div', { class: 'letters-layout' }, h('section', { class: 'card' }, groupsEl), detailEl),
       guide,
+      Q.voice.available ? recCard : null,
       marks));
 
     renderGroups();
     renderDetail();
     renderGuide();
+    if (Q.voice.available) rec.draw();
+    const onKey = e => {
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
+      if (Q.voice.available) rec.key(e);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('keydown', onKey); rec.dispose(); Q.voice.stop(); };
   };
 })(window.Q = window.Q || {});

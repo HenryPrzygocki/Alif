@@ -81,12 +81,53 @@
     return line;
   }
 
-  function highlightWord(container, v, w) {
-    container.querySelectorAll('.qw.now').forEach(x => x.classList.remove('now'));
-    if (w < 0) return;
+  /* light up the word being recited; p (0–1) sweeps through it, like karaoke */
+  function highlightWord(container, v, w, p = 0) {
     const line = container.querySelector(`[data-verse="${v}"] .qline`);
-    const el = line && line.querySelector(`.qw[data-i="${w}"]`);
-    if (el) el.classList.add('now');
+    const el = w >= 0 && line ? line.querySelector(`.qw[data-i="${w}"]`) : null;
+    container.querySelectorAll('.qw.now').forEach(x => { if (x !== el) x.classList.remove('now'); });
+    if (!el) return;
+    el.classList.add('now');
+    el.style.setProperty('--p', p.toFixed(3));
+  }
+
+  /* The word you tapped: big, with its sound and meaning, and buttons to hear it again */
+  function wordFocus(doc) {
+    const el = h('div', { class: 'wfocus', hidden: true });
+    let cur = null, tok = null;
+    const stopW = () => { if (tok) { tok.cancel(); tok = null; } };
+    async function say(times) {
+      stopW();
+      const t = tok = makeRun();
+      try {
+        for (let k = 0; k < times; k++) {
+          await Q.audio.word(doc.n, cur.v, cur.i, prefs().reciter);
+          if (t.stopped) return;
+          if (k < times - 1) await Q.wait(Math.round(Q.audio.lastDuration() * 1000 * 1.6 + 900), t);
+          if (t.stopped) return;
+        }
+      } catch (e) { audioProblem(e); }
+      finally { if (tok === t) tok = null; }
+    }
+    function draw() {
+      const verse = doc.verses[cur.v - 1];
+      const tr = Q.quran.translit(doc, cur.v);
+      el.hidden = false;
+      el.replaceChildren(
+        h('span', { class: 'ar' }, verse.words[cur.i]),
+        h('div', null, h('div', { class: 'tr' }, tr[cur.i]), h('div', { class: 'm' }, `${verse.w[cur.i] || ''} · verse ${cur.v}, word ${cur.i + 1}`)),
+        h('div', { class: 'row' },
+          h('button', { class: 'btn sm', type: 'button', onclick: () => say(1) }, '▶ Again'),
+          h('button', { class: 'btn sm', type: 'button', onclick: () => say(3), title: 'Plays it 3 times with a pause after each so you can repeat' }, 'Repeat ×3'),
+          h('button', { class: 'btn sm', type: 'button', onclick: () => say(5) }, '×5'),
+          h('button', { class: 'btn ghost sm', type: 'button', 'aria-label': 'Close', onclick: () => { stopW(); el.hidden = true; } }, '✕')));
+    }
+    return {
+      el,
+      show(v, i) { cur = { v, i }; draw(); say(1); },
+      stop: stopW,
+      redraw() { if (cur && !el.hidden) draw(); },
+    };
   }
 
   /* Text / translation / transliteration / reciter / speed controls */
@@ -104,11 +145,15 @@
         Q.RECITERS.map(r => h('option', { value: r.id, selected: r.id === p.reciter }, r.label + ' — ' + r.sub))));
     return h('div', { class: 'qbar-controls' },
       seg('Text', 'text', [['translit', 'Transliteration'], ['both', 'Both'], ['arabic', 'Arabic']]),
-      h('div', { class: 'field' }, h('span', { class: 'label' }, 'Spelling'), Q.schemeSwitch(() => onChange('scheme'))),
+      h('div', { class: 'field' }, h('span', { class: 'label' }, 'Translation'),
+        h('div', { class: 'seg' }, [['off', 'Off'], ['en', 'English'], ['pt', 'Português']].map(([val, text]) => h('button', {
+          type: 'button', 'aria-pressed': String(val === 'off' ? !p.trans : (p.trans && p.transLang === val)),
+          onclick: () => { if (val === 'off') store().setQPref('trans', false); else { store().setQPref('trans', true); store().setQPref('transLang', val); } onChange('trans'); },
+        }, text)))),
+      h('div', { class: 'field' }, h('span', { class: 'label', title: 'How the transliteration is spelled' }, 'Spelling'), Q.schemeSwitch(() => onChange('scheme'))),
       opts.audio === false ? null : reciter,
       opts.audio === false ? null : seg('Speed', 'speed', [[0.75, '0.75×'], [1, '1×']]),
       h('div', { class: 'stack', style: { gap: '4px' } },
-        toggle('Translation', 'trans'),
         toggle('Word meanings', 'meaning')));
   }
 
@@ -125,7 +170,7 @@
       return h('a', { class: 'scard', href: '#surah-' + meta.n },
         h('div', { class: 'scard-top' }, h('span', { class: 'snum' }, meta.n), h('span', { class: 'ar sname' }, meta.ar)),
         h('b', null, meta.name),
-        h('span', { class: 'small muted' }, `${Q.SCHEME === 'en' ? meta.en : meta.pt} · ${meta.verses} verses`),
+        h('span', { class: 'small muted' }, `${Q.quran.metaName(meta)} · ${meta.verses} verses`),
         segBar(sum),
         h('span', { class: 'small' }, `${sum.mem} of ${sum.count} memorized`, sum.due ? h('span', { class: 'qchip due' }, sum.due + ' due') : null));
     }
@@ -161,7 +206,7 @@
           const status = sum.mem === sum.count ? 'memorized' : (sum.mem || sum.learning) ? 'learning' : 'new';
           return h('a', { class: 'srow', href: '#surah-' + meta.n },
             h('span', { class: 'snum' }, meta.n),
-            h('span', { class: 'srow-name' }, h('b', null, meta.name), h('span', { class: 'small muted' }, Q.SCHEME === 'en' ? meta.en : meta.pt)),
+            h('span', { class: 'srow-name' }, h('b', null, meta.name), h('span', { class: 'small muted' }, Q.quran.metaName(meta))),
             h('span', { class: 'small muted num' }, meta.verses + ' verses'),
             statusChip(status),
             h('span', { class: 'ar sname' }, meta.ar));
@@ -204,7 +249,8 @@
       const tabsEl = h('div', { class: 'qtabs', role: 'tablist' });
       const bar = h('div', { class: 'card qdisplay' });
       const body = h('div', { class: 'qbody' });
-      root.replaceChildren(h('div', { class: 'page' }, head, tabsEl, bar, body));
+      const barWrap = h('details', { class: 'qdisplay-details', open: window.innerWidth > 760 }, h('summary', null, 'Display and audio settings'), bar);
+      root.replaceChildren(h('div', { class: 'page' }, head, tabsEl, barWrap, body));
 
       function renderHead() {
         const sum = store().qSummary(n, count);
@@ -276,6 +322,12 @@
 
     const list = h('div', { class: 'qverses' });
     const status = h('span', { class: 'small muted', 'aria-live': 'polite' });
+    const followNote = h('span', { class: 'follow-note' });
+    const focus = wordFocus(doc);
+    function drawFollow() {
+      const f = Q.audio.following(n, prefs().reciter);
+      followNote.textContent = f === 'word' ? 'Following each word as it is recited' : f === 'verse' ? 'Following verse by verse (word timings not available for this recitation)' : '';
+    }
     const playBtn = h('button', { class: 'btn primary', type: 'button', onclick: () => run ? stopRun() : playFrom(pos) });
 
     function drawVerses() {
@@ -290,7 +342,7 @@
         list.append(h('div', { class: 'qverse', 'data-verse': verse.n },
           verseBadge(verse.n, { onclick: () => playFrom(verse.n), title: 'Play from verse ' + verse.n }),
           h('div', { class: 'qverse-main' },
-            wordLine(doc, verse.n, { onWord: i => { stopRun(); Q.audio.word(n, verse.n, i, prefs().reciter).catch(audioProblem); } }),
+            wordLine(doc, verse.n, { onWord: i => { stopRun(); focus.show(verse.n, i); } }),
             prefs().trans ? h('p', { class: 'qtrans' }, Q.quran.translation(verse)) : null)));
       });
       mark(pos, false);
@@ -327,7 +379,10 @@
             }
             for (let r = 0; r < prefs().repeat; r++) {
               mark(v, r === 0);
-              await Q.audio.verse(n, v, prefs().reciter, w => highlightWord(list, v, w));
+              const playing = Q.audio.verse(n, v, prefs().reciter, (w, p) => highlightWord(list, v, w, p));
+              setTimeout(drawFollow, 50);
+              await playing;
+              drawFollow();
               if (tok.stopped) return;
               if (prefs().gap) {
                 const ms = Math.round(Q.audio.lastDuration() * 1000 / prefs().speed * 1.1 + 700);
@@ -347,6 +402,7 @@
     }
     function stopRun() {
       if (run) { run.cancel(); run = null; setRun(null); }
+      focus.stop();
       if (turnEl) { turnEl.remove(); turnEl = null; }
       highlightWord(list, 0, -1);
       drawButton();
@@ -360,11 +416,12 @@
       }, text))));
 
     const player = h('div', { class: 'qplayer' },
+      focus.el,
       h('div', { class: 'row' },
         h('button', { class: 'btn ghost', type: 'button', 'aria-label': 'Previous verse', onclick: () => { pos = Math.max(1, pos - 1); if (run) playFrom(pos); else { mark(pos, true); drawButton(); } } }, '⏮'),
         playBtn,
         h('button', { class: 'btn ghost', type: 'button', 'aria-label': 'Next verse', onclick: () => { pos = Math.min(count, pos + 1); if (run) playFrom(pos); else { mark(pos, true); drawButton(); } } }, '⏭'),
-        status),
+        status, followNote),
       h('div', { class: 'row qplayer-opts' },
         opt('Each verse', 'repeat', [[1, '1×'], [2, '2×'], [3, '3×'], [5, '5×']]),
         opt('Pause for you to repeat', 'gap', [[false, 'Off'], [true, 'On']]),
@@ -387,7 +444,7 @@
     }
     document.addEventListener('keydown', onKey);
     const cleanup = () => { document.removeEventListener('keydown', onKey); stopRun(); };
-    cleanup.redraw = drawVerses;
+    cleanup.redraw = () => { drawVerses(); focus.redraw(); };
     return cleanup;
   }
 
@@ -412,7 +469,8 @@
       for (let v = 1; v <= count; v++) if (store().qStatus(n + ':' + v) === 'new') return v;
       return 1;
     }
-    function stopRun() { if (run) { run.cancel(); run = null; setRun(null); } }
+    const focus = wordFocus(doc);
+    function stopRun() { if (run) { run.cancel(); run = null; setRun(null); } focus.stop(); }
     function startRun() { stopRun(); run = makeRun(); setRun(run); return run; }
 
     const picker = h('div', { class: 'vpicker' });
@@ -421,7 +479,7 @@
     const controls = h('div', { class: 'lcontrols' });
     body.append(
       h('div', { class: 'row', style: { justifyContent: 'space-between' } }, picker),
-      steps, stage, controls);
+      steps, stage, focus.el, controls);
 
     function go(v, step) {
       stopRun();
@@ -460,7 +518,7 @@
             size, hide,
             onWord: (i) => {
               if (hide && hide(i) !== 'show') { peek.add(v + ':' + i); draw(); return; }
-              stopRun(); Q.audio.word(n, v, i, prefs().reciter).catch(audioProblem);
+              stopRun(); focus.show(v, i);
             },
           }),
           prefs().trans && (!hide || checked) ? h('p', { class: 'qtrans' }, Q.quran.translation(verse)) : null));
@@ -471,7 +529,7 @@
       try {
         for (let rep = 0; rep < (opts.times || 1); rep++) {
           for (let v = from; v <= to; v++) {
-            await Q.audio.verse(n, v, prefs().reciter, w => highlightWord(stage, v, w));
+            await Q.audio.verse(n, v, prefs().reciter, (w, p) => highlightWord(stage, v, w, p));
             if (tok.stopped) return;
             if (opts.gap) {
               const ms = Math.round(Q.audio.lastDuration() * 1000 / prefs().speed * 1.15 + 700);
@@ -577,7 +635,7 @@
     if (!store().state.quran.list.includes(n)) store().qAdd(n);
     draw();
     const cleanup = () => { document.removeEventListener('keydown', onKey); stopRun(); if (rec) rec.dispose(); };
-    cleanup.redraw = draw;
+    cleanup.redraw = () => { draw(); focus.redraw(); };
     return cleanup;
   }
 
@@ -629,8 +687,8 @@
         const shuffled = items.length > 1 ? Q.shuffle(items) : items;
         if (items.length > 2 && shuffled.every((x, k) => x.i === k)) shuffled.reverse();
         let next = 0, mistakes = 0;
-        const dir = p.text === 'translit' ? 'ltr' : 'rtl';
-        const answer = h('div', { class: 'qline answer mode-' + p.text, dir });
+        const dir = 'rtl';   // build the verse in mushaf order, right to left
+        const answer = h('div', { class: 'qline answer mode-' + p.text, dir, 'data-empty': 'Tap the words in order. The first word goes on the right.' });
         const pool = h('div', { class: 'qline pool mode-' + p.text, dir });
         const fb = h('div', { class: 'feedback' }, ' ');
         const label = x => [h('span', { class: 'qw-ar ar' }, x.ar), p.text === 'arabic' ? null : h('span', { class: 'qw-tr' }, x.tr)];
@@ -814,7 +872,7 @@
       draw().then(() => {
         stopRun(); run = makeRun(); setRun(run); setLocalRun(run);
         const tok = run;
-        Q.audio.verse(n, v, prefs().reciter, w => highlightWord(body, v, w)).catch(audioProblem).finally(() => { if (run === tok) { run = null; setRun(null); setLocalRun(null); } });
+        Q.audio.verse(n, v, prefs().reciter, (w, p) => highlightWord(body, v, w, p)).catch(audioProblem).finally(() => { if (run === tok) { run = null; setRun(null); setLocalRun(null); } });
       });
     }
     function finish() {

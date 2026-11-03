@@ -45,8 +45,11 @@
       return cache[v] || (cache[v] = Q.verseTranslit(doc.verses[v - 1].words, sc));
     },
     basmalaTranslit() { return Q.verseTranslit(Q.BASMALA.split(' '), Q.SCHEME === 'en' ? 'en' : 'pt'); },
-    name(doc) { return Q.SCHEME === 'en' ? doc.en : doc.pt; },
-    translation(v) { return Q.SCHEME === 'en' ? v.en : v.pt; },
+    /* translations follow their own language setting, separate from the transliteration spelling */
+    lang() { return (Q.store.qPrefs().transLang === 'pt') ? 'pt' : 'en'; },
+    name(doc) { return quran.lang() === 'pt' ? doc.pt : doc.en; },
+    metaName(meta) { return quran.lang() === 'pt' ? meta.pt : meta.en; },
+    translation(v) { return quran.lang() === 'pt' ? v.pt : v.en; },
     /* first-letter cue for a hidden word */
     cue(text, arabic) {
       if (arabic) {
@@ -60,65 +63,97 @@
     },
   };
 
-  /* ---------- word timings (Quran.com), cached per chapter ---------- */
+  /* ---------- word timings (Quran.com), cached per chapter ----------
+     1. api.quran.com v4: per-verse files, sometimes with word segments
+     2. api.qurancdn.com (what Quran.com's own player uses): whole-surah file + verse and word timings
+     Whatever answers is used; without either, per-verse audio from EveryAyah still plays. */
   const timingMem = {};
+  const fetchJSON = async (url, ms = 7000) => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), ms);
+    try {
+      const res = await fetch(url, { signal: ctrl.signal });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    } finally { clearTimeout(timer); }
+  };
+  const hasSeg = d => !!(d && Object.values(d).some(x => x.seg && x.seg.length));
+
   async function timings(n, reciter) {
     const r = Q.RECITER[reciter];
     if (!r || !r.qcom) return null;
-    const key = `huruf.qt.${r.qcom}.${n}`;
+    const key = `huruf.qt2.${r.qcom}.${n}`;
     if (timingMem[key] !== undefined) return timingMem[key];
     const cached = Q.storage.get(key, null);
     if (cached && Date.now() - cached.t < 30 * 86400000) return (timingMem[key] = cached.d);
+    timingMem[key] = null;
+    let d = null;
     try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 6000);
-      const res = await fetch(`https://api.quran.com/api/v4/recitations/${r.qcom}/by_chapter/${n}?per_page=300&fields=segments`, { signal: ctrl.signal });
-      clearTimeout(timer);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const json = await res.json();
-      const d = {};
+      const json = await fetchJSON(`https://api.quran.com/api/v4/recitations/${r.qcom}/by_chapter/${n}?per_page=300&fields=segments`);
+      d = {};
       (json.audio_files || []).forEach(f => {
         const v = Number(String(f.verse_key).split(':')[1]);
         let url = f.url || '';
         if (url.startsWith('//')) url = 'https:' + url;
         else if (url && !/^https?:/.test(url)) url = 'https://verses.quran.com/' + url;
-        d[v] = { url, seg: normSegments(f.segments) };
+        d[v] = { url, seg: normSegments(f.segments, 0) };
       });
-      timingMem[key] = Object.keys(d).length ? d : null;
-      if (timingMem[key]) Q.storage.set(key, { t: Date.now(), d: timingMem[key] });
-    } catch (e) {
-      timingMem[key] = null;   // offline, blocked or no data: per-verse audio still works
+      if (!Object.keys(d).length) d = null;
+    } catch (e) { d = null; }
+    if (!hasSeg(d)) {
+      try {
+        const json = await fetchJSON(`https://api.qurancdn.com/api/qdc/audio/reciters/${r.qcom}/audio_files?chapter=${n}&segments=true`);
+        const f = (json.audio_files || [])[0];
+        if (f && f.audio_url && Array.isArray(f.verse_timings)) {
+          const q = {};
+          f.verse_timings.forEach(vt => {
+            const v = Number(String(vt.verse_key).split(':')[1]);
+            const from = Number(vt.timestamp_from) || 0, to = Number(vt.timestamp_to) || 0;
+            q[v] = { url: f.audio_url, start: from / 1000, end: to / 1000, seg: normSegments(vt.segments, from, to) };
+          });
+          if (hasSeg(q)) d = q;
+        }
+      } catch (e) { /* not reachable: keep what we have */ }
     }
-    return timingMem[key];
+    timingMem[key] = d;
+    if (hasSeg(d)) Q.storage.set(key, { t: Date.now(), d });
+    return d;
   }
-  function normSegments(seg) {
+  /* → [{ w: 0-based word, start, end }] in milliseconds of the audio file */
+  function normSegments(seg, from = 0, to = 0) {
     if (!Array.isArray(seg) || !seg.length) return null;
     const rows = seg.filter(s => Array.isArray(s) && s.length >= 3);
     if (!rows.length) return null;
     const four = rows[0].length >= 4;
     const zeroBased = rows.some(s => s[0] === 0);
-    return rows.map(s => ({
+    let out = rows.map(s => ({
       w: s[0] - (zeroBased ? 0 : 1),
-      start: four ? s[2] : s[1],
-      end: four ? s[3] : s[2],
+      start: Number(four ? s[2] : s[1]),
+      end: Number(four ? s[3] : s[2]),
     })).filter(s => s.w >= 0 && s.end > s.start);
+    // timings given relative to the verse inside a whole-surah file: shift them
+    if (from > 0 && out.length && Math.max(...out.map(s => s.end)) <= (to - from) + 80) out = out.map(s => ({ w: s.w, start: s.start + from, end: s.end + from }));
+    return out.length ? out : null;
   }
 
   function everyAyah(r, n, v) { return `https://everyayah.com/data/${r.everyayah}/${pad(n)}${pad(v)}.mp3`; }
 
-  /* ---------- player ---------- */
-  /* One shared audio element. play() resolves when the clip ends, rejects with 'stopped' if cut short. */
+  /* ---------- player ----------
+     One shared audio element. A clip is { src, start, end, seg }; play() takes a list of clips to try
+     in order and resolves when the clip ends (rejects with 'stopped' if cut short). */
   const audio = new Audio();
   audio.preload = 'auto';
-  let current = null;     // { resolve, reject, end, onWord, seg, raf }
+  let current = null;
   let rate = 1;
+  let lastClip = 0;
 
   function finish(ok) {
     if (!current) return;
     const c = current;
     current = null;
     cancelAnimationFrame(c.raf);
-    if (c.onWord) c.onWord(-1);
+    if (ok) lastClip = Math.max(0, (c.end != null ? Math.min(audio.currentTime, c.end) : audio.currentTime) - (c.start || 0));
+    if (c.onWord) c.onWord(-1, 0);
     ok ? c.resolve() : c.reject(new Error('stopped'));
   }
   audio.addEventListener('ended', () => finish(true));
@@ -131,36 +166,39 @@
     const t = audio.currentTime * 1000;
     if (current.end != null && audio.currentTime >= current.end) { audio.pause(); finish(true); return; }
     if (current.seg && current.onWord) {
-      let w = -1;
-      for (const s of current.seg) if (t >= s.start - 30 && t < s.end) { w = s.w; break; }
-      if (w !== current.lastW) { current.lastW = w; current.onWord(w); }
+      let w = -1, p = 0;
+      for (const s of current.seg) {
+        if (t >= s.start - 30 && t < s.end) { w = s.w; p = Math.min(1, Math.max(0, (t - s.start) / (s.end - s.start))); break; }
+      }
+      if (w !== current.lastW || Math.abs(p - current.lastP) > 0.02) { current.lastW = w; current.lastP = p; current.onWord(w, p); }
     }
     current.raf = requestAnimationFrame(track);
   }
 
-  function playSrc(srcs, { start = 0, end = null, seg = null, onWord = null } = {}) {
+  function play(clips, onWord = null) {
     stop();
     return new Promise((resolve, reject) => {
-      current = { resolve, reject, end, seg, onWord, lastW: -2, raf: 0 };
+      current = { resolve, reject, onWord, lastW: -2, lastP: 0, raf: 0, start: 0, end: null, seg: null };
       const mine = current;
       let i = 0;
       const tryNext = () => {
         if (current !== mine) return;
-        if (i >= srcs.length) { current = null; reject(new Error('audio-unavailable')); return; }
-        const src = srcs[i++];
+        if (i >= clips.length) { current = null; reject(new Error('audio-unavailable')); return; }
+        const clip = clips[i++];
+        Object.assign(mine, { start: clip.start || 0, end: clip.end != null ? clip.end : null, seg: clip.seg || null });
         audio.onerror = () => tryNext();
-        audio.src = src;
+        if (audio.src !== clip.src) audio.src = clip.src;
         audio.playbackRate = rate;
         const go = () => {
           if (current !== mine) return;
-          try { if (start) audio.currentTime = start; } catch (e) { /* not seekable yet */ }
+          try { audio.currentTime = mine.start; } catch (e) { /* not seekable yet */ }
           audio.play().then(() => { mine.raf = requestAnimationFrame(track); }).catch(err => {
             if (current !== mine) return;
             if (err && err.name === 'NotAllowedError') { current = null; reject(err); }
             else tryNext();
           });
         };
-        if (start) audio.addEventListener('loadedmetadata', go, { once: true }); else go();
+        if (mine.start && audio.readyState < 1) audio.addEventListener('loadedmetadata', go, { once: true }); else go();
       };
       tryNext();
     });
@@ -177,32 +215,38 @@
     setRate(r) { rate = r; audio.playbackRate = r; },
     stop,
     get playing() { return !!current && !audio.paused; },
-    pause() { audio.pause(); },
-    resume() { return audio.play(); },
-    /* play one verse; onWord(index) fires as words are recited (when timings exist) */
+    /* play one verse; onWord(index, progress 0–1 inside the word) fires as words are recited */
     async verse(n, v, reciterId, onWord) {
       const r = Q.RECITER[reciterId] || Q.RECITERS[0];
       const t = await timings(n, r.id);
-      const srcs = [];
-      if (t && t[v] && t[v].url) srcs.push(t[v].url);
-      srcs.push(everyAyah(r, n, v));
-      if (r.qcom && !(t && t[v])) srcs.push(`https://verses.quran.com/Husary/mp3/${pad(n)}${pad(v)}.mp3`);
-      return playSrc(srcs, { seg: t && t[v] ? t[v].seg : null, onWord });
+      const clips = [];
+      if (t && t[v] && t[v].url) clips.push({ src: t[v].url, start: t[v].start, end: t[v].end, seg: t[v].seg });
+      clips.push({ src: everyAyah(r, n, v) });
+      if (r.qcom) clips.push({ src: `https://verses.quran.com/Husary/mp3/${pad(n)}${pad(v)}.mp3` });
+      return play(clips, onWord);
     },
     basmala(reciterId) {
       const r = Q.RECITER[reciterId] || Q.RECITERS[0];
-      return playSrc([everyAyah(r, 1, 1), `https://verses.quran.com/Husary/mp3/001001.mp3`]);
+      return play([{ src: everyAyah(r, 1, 1) }, { src: 'https://verses.quran.com/Husary/mp3/001001.mp3' }]);
     },
-    /* one word: Husary's own voice when timings exist, otherwise Quran.com's word audio */
+    /* one word: the reciter's own voice when timings exist, otherwise Quran.com's word audio */
     async word(n, v, w, reciterId) {
       const r = Q.RECITER[reciterId] || Q.RECITERS[0];
       const t = await timings(n, r.id);
       const s = t && t[v] && t[v].seg && t[v].seg.find(x => x.w === w);
-      if (s && t[v].url) return playSrc([t[v].url], { start: Math.max(0, s.start - 40) / 1000, end: (s.end + 60) / 1000 });
-      return playSrc([`https://audio.qurancdn.com/wbw/${pad(n)}_${pad(v)}_${pad(w + 1)}.mp3`]);
+      const wbw = { src: `https://audio.qurancdn.com/wbw/${pad(n)}_${pad(v)}_${pad(w + 1)}.mp3` };
+      if (s && t[v].url) return play([{ src: t[v].url, start: Math.max(0, s.start - 40) / 1000, end: (s.end + 60) / 1000 }, wbw]);
+      return play([wbw]);
     },
-    hasWordTimings(n, reciterId) { const t = timingMem[`huruf.qt.${(Q.RECITER[reciterId] || {}).qcom}.${n}`]; return !!(t && Object.values(t).some(x => x.seg)); },
-    lastDuration() { return isFinite(audio.duration) ? audio.duration : 0; },
+    /* 'word' when Quran.com timings were found for this surah, 'verse' otherwise, null before the first try */
+    following(n, reciterId) {
+      const r = Q.RECITER[reciterId] || {};
+      const t = timingMem[`huruf.qt2.${r.qcom}.${n}`];
+      if (!r.qcom) return 'verse';
+      if (t === undefined) return null;
+      return hasSeg(t) ? 'word' : 'verse';
+    },
+    lastDuration() { return lastClip || (isFinite(audio.duration) ? audio.duration : 0); },
   };
 
   /* cancellable pause, e.g. "your turn to repeat" */
