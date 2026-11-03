@@ -1,11 +1,13 @@
 # Huruf
 
-A personal practice desk for learning to read the Quran, starting from the letters. It follows the six-book **Iqra** method and counts down to Ramadan.
+A personal practice desk for learning to read the Quran and memorize surahs. It follows the six-book **Iqra** method for the alphabet and counts down to Ramadan.
 
 ## What's in it
 
 | Page | What it does |
 |---|---|
+| **Surahs** | Al-Fātiḥah and all of Juz ʿAmma. Each surah has three steps: **Listen** (Al-Ḥuṣarī verse by verse, tap any word to hear it, repeat each verse, pause for you to repeat, loop), **Learn** (one verse at a time: listen & repeat, say it from memory while words fade away, then join it to the verses before; record yourself and compare) and **Test** (say it from memory, put the words in order, what comes next). Transliteration first by default, or both, or Arabic only |
+| **Review** | Spaced review of every verse you have learned: back after 1 day, 3, 7, 14, 30, 60. Say it, reveal, grade yourself |
 | **Today** | Ramadan countdown (first taraweeh Sun 7 Feb 2027, first fast Mon 8 Feb), your Iqra book and pace, today's goal, your trickiest letters, quick-start drills |
 | **Practice** | *Read aloud* (you mark yourself): Letter names, Read the sounds (fatḥa / kasra / ḍamma / tanwīn), Joined letters. Say the row, reveal, click what you missed. *Quiz* (the site checks): Letter → sound, Sound → letter, Letter ↔ name, with look-alike distractors and an explanation when you miss. Transliteration in **Português (Brasil)** (só, chá, rhó; Iqra style) or **English** (ṣa, sha, kha), switchable anywhere. Weak letters come up more often. Keyboard: `Space` reveal/next, `1`–`9` mark or answer, `O` hide options |
 | **Letters** | All 28 letters + hamza grouped by shape, with name, sound, pronunciation tip, positional forms, vowels, look-alikes and your record. Vowel-mark reference |
@@ -40,6 +42,9 @@ js/data.js          ← the content: letters, groups, vowels, marks, Iqra books,
 js/store.js         saved progress + derived stats (mastery, streaks, weak letters)
 js/ramadan.js       next Ramadan from the Umm al-Qura calendar (overridable)
 js/translit.js      Latin → Arabic typing engine
+js/quran-translit.js  Uthmani text → transliteration that follows recitation (waṣl, sun letters, idgham, iqlab, stops)
+js/quran.js         surah data loading + recitation audio (repeat, pauses, word timings)
+data/quran/         surah text, word meanings, EN/PT translations (built by tools/build_quran.py)
 js/views/*.js       one file per page
 js/app.js           navigation, theme, font
 ```
@@ -57,6 +62,11 @@ Plain JavaScript, no framework. New drills mostly mean new data in `js/data.js` 
 - Tajwīd colour-coding
 
 ## Credits
+
+- Quran text: Uthmani script from [QuranEnc](https://quranenc.com) via the `quran-cloud` package (CC BY 4.0), English translation Saheeh International
+- Word-by-word meanings: [Quran.com](https://quran.com) (via `@kmaslesa/holy-quran-word-by-word-full-data`)
+- Portuguese translation: Helmi Nasr, via [fawazahmed0/quran-api](https://github.com/fawazahmed0/quran-api)
+- Recitation: Mahmoud Khalil Al-Ḥuṣarī (murattal and muʿallim) streamed from [EveryAyah](https://everyayah.com) and Quran.com; word timings from the Quran.com API when it is reachable
 
 - **KFGQPC Uthmanic Script Hafs** font by the King Fahd Glorious Quran Printing Complex, and the **IndoPak Nastaleeq** font, both as distributed by [Quran.com](https://github.com/quran/quran.com-frontend-next)
 - Amiri Quran, Scheherazade New, Noto Naskh Arabic, Literata, Instrument Sans and JetBrains Mono via Google Fonts

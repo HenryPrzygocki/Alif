@@ -129,10 +129,43 @@
         h('a', { href: '#practice', class: p === rec ? 'rec' : '', onclick: e => { e.preventDefault(); Q.startPreset(p.preset); } },
           h('b', null, p.title + (p === rec ? ' · for you now' : '')), h('span', null, Q.mixed(Q.fill(p.sub)))))));
 
+    /* Quran: reviews due and surahs in progress (filled in once the surah list loads) */
+    const quranCard = h('section', { class: 'card today-quran' },
+      h('div', { class: 'card-head' }, h('h2', null, 'Your surahs'), h('a', { class: 'small', href: '#surahs' }, 'All surahs')),
+      h('p', { class: 'empty' }, 'Loading…'));
+    Q.quran.loadIndex().then(index => {
+      const due = Q.store.qDue();
+      const list = Q.store.state.quran.list.map(n => index.find(x => x.n === n)).filter(Boolean).slice(0, 3);
+      const verses = Q.store.today().q || 0;
+      const kids = [h('div', { class: 'card-head' }, h('h2', null, 'Your surahs'), h('a', { class: 'small', href: '#surahs' }, 'All surahs'))];
+      kids.push(h('div', { class: 'review-cta' + (due.length ? ' has-due' : ''), style: { padding: '12px 14px', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)' } },
+        h('div', null,
+          h('b', null, due.length ? `${due.length} ${due.length === 1 ? 'verse' : 'verses'} to review` : 'No reviews due'),
+          h('div', { class: 'small muted' }, verses ? `${verses} verse ${verses === 1 ? 'practice' : 'practices'} today` : 'Reviews keep what you memorized from fading')),
+        due.length ? h('a', { class: 'btn primary', href: '#review' }, 'Review now') : null));
+      if (list.length) {
+        list.forEach(meta => {
+          const sum = Q.store.qSummary(meta.n, meta.verses);
+          kids.push(h('a', { class: 'srow', href: '#surah-' + meta.n, style: { gridTemplateColumns: 'minmax(0, 1fr) 120px auto' } },
+            h('span', { class: 'srow-name' }, h('b', null, meta.name), h('span', { class: 'small muted' }, `${sum.mem} of ${sum.count} memorized`)),
+            segBarMini(sum),
+            h('span', { class: 'ar sname', style: { fontSize: '22px' } }, meta.ar)));
+        });
+      } else {
+        kids.push(h('p', { class: 'small', style: { color: 'var(--ink-2)' } }, 'Start with Al-Fātiḥah: it is recited in every prayer. Listen to it word by word, then learn it one verse at a time.'),
+          h('a', { class: 'btn primary', href: '#surah-1' }, 'Start Al-Fātiḥah'));
+      }
+      quranCard.replaceChildren(...kids);
+    }).catch(() => quranCard.replaceChildren(h('p', { class: 'empty' }, 'Surahs load when the site is opened from its web address.')));
+
     root.append(h('div', { class: 'page' },
       head,
       h('div', { class: 'split' }, countdown, todayCard),
-      iqra,
-      h('div', { class: 'split' }, weakCard, quick)));
+      h('div', { class: 'split' }, quranCard, weakCard),
+      quick,
+      iqra));
   };
+  function segBarMini(sum) {
+    return h('div', { class: 'qbar' }, h('i', { class: 'mem', style: { width: (sum.mem / sum.count * 100) + '%' } }), h('i', { class: 'lrn', style: { width: (sum.learning / sum.count * 100) + '%' } }));
+  }
 })(window.Q = window.Q || {});

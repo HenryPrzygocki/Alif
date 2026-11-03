@@ -6,38 +6,66 @@
   const icon = (d) => s('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.7', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' },
     ...d.map(p => s('path', { d: p })));
 
+  /* Navigation, in three groups so each part of the site is one click away */
   const ROUTES = [
     { id: 'today', label: 'Today', view: () => Q.views.today, icon: ['M4 11l8-7 8 7', 'M6 9.5V20h12V9.5', 'M10 20v-5h4v5'] },
-    { id: 'practice', label: 'Practice', view: () => Q.views.practice, icon: ['M8 5.5v13l11-6.5z'] },
+    { group: 'Quran' },
+    { id: 'surahs', label: 'Surahs', view: () => Q.views.surahs, icon: ['M5 4.5h9.5a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z', 'M8.5 9h6M8.5 12.5h6M8.5 16h3.5'] },
+    { id: 'review', label: 'Review', view: () => Q.views.review, icon: ['M20 12a8 8 0 1 1-2.6-5.9', 'M20 4v4.5h-4.5', 'M9 12.5l2.2 2.2L15.5 10'], badge: () => Q.store.qDue().length },
+    { group: 'Alphabet' },
+    { id: 'practice', label: 'Letter practice', view: () => Q.views.practice, icon: ['M8 5.5v13l11-6.5z'] },
     { id: 'letters', label: 'Letters', view: () => Q.views.letters, icon: ['M4 5h7v6H4z', 'M13 5h7v6h-7z', 'M4 13h7v6H4z', 'M13 13h7v6h-7z'] },
     { id: 'keyboard', label: 'Keyboard', view: () => Q.views.keyboard, icon: ['M3 7h18v11H3z', 'M7 11h.01M11 11h.01M15 11h.01M7 14.5h10'] },
+    { group: 'You' },
     { id: 'progress', label: 'Progress', view: () => Q.views.progress, icon: ['M4 20V10', 'M10 20V4', 'M16 20v-7', 'M21 20H3'] },
     { id: 'setup', label: 'Setup', view: () => Q.views.setup, icon: ['M4 7h10M18 7h2M4 17h4M12 17h8', 'M16 5v4M10 15v4'] },
   ];
+  // pages that live under a nav item: #surah-112 → Surahs
+  const SUB_ROUTES = [
+    { re: /^surah-(\d+)$/, parent: 'surahs', view: m => root => Q.views.surah(root, Number(m[1])), title: () => 'Surah' },
+  ];
 
   const nav = Q.$('#nav');
-  ROUTES.forEach(r => nav.append(h('a', { href: '#' + r.id, 'data-route': r.id }, icon(r.icon), h('span', null, r.label))));
+  function drawNav() {
+    nav.replaceChildren(...ROUTES.map(r => r.group
+      ? h('div', { class: 'nav-group' }, r.group)
+      : h('a', { href: '#' + r.id, 'data-route': r.id }, icon(r.icon), h('span', null, r.label),
+        r.badge && r.badge() ? h('span', { class: 'nav-badge', title: 'Due today' }, r.badge()) : null)));
+  }
+  drawNav();
 
   let cleanup = null;
+  let currentId = null;
   function render() {
     const id = (location.hash || '').replace(/^#/, '') || 'today';
-    const route = ROUTES.find(r => r.id === id) || ROUTES[0];
-    nav.querySelectorAll('a').forEach(a => a.removeAttribute('aria-current'));
-    nav.querySelector(`a[data-route="${route.id}"]`).setAttribute('aria-current', 'page');
+    let route = ROUTES.find(r => r.id === id && !r.group);
+    let viewFn, navId, title;
+    if (route) { viewFn = route.view(); navId = route.id; title = route.label; }
+    else {
+      const sub = SUB_ROUTES.map(x => ({ x, m: id.match(x.re) })).find(y => y.m);
+      if (sub) { viewFn = sub.x.view(sub.m); navId = sub.x.parent; title = sub.x.title(); }
+      else { route = ROUTES[0]; viewFn = route.view(); navId = 'today'; title = 'Today'; }
+    }
+    currentId = navId;
+    drawNav();
+    const active = nav.querySelector(`a[data-route="${navId}"]`);
+    if (active) active.setAttribute('aria-current', 'page');
     if (typeof cleanup === 'function') { try { cleanup(); } catch (e) { console.error(e); } }
     cleanup = null;
+    if (Q.audio) Q.audio.stop();
     const root = Q.$('#view');
     root.replaceChildren();
     Q.hideTip();
     try {
-      cleanup = route.view()(root);
+      cleanup = viewFn(root);
     } catch (e) {
       console.error(e);
       root.append(h('div', { class: 'page' }, h('div', { class: 'card' }, h('h2', null, 'Something broke on this page'), h('p', { class: 'muted' }, String(e.message || e)))));
     }
-    document.title = route.id === 'today' ? 'Huruf' : `${route.label} · Huruf`;
-    root.focus && window.scrollTo(0, 0);
+    document.title = navId === 'today' ? 'Huruf' : `${title} · Huruf`;
+    window.scrollTo(0, 0);
   }
+  Q.refreshNav = () => { drawNav(); const a = nav.querySelector(`a[data-route="${currentId}"]`); if (a) a.setAttribute('aria-current', 'page'); };
 
   Q.go = id => { if (location.hash === '#' + id) render(); else location.hash = id; };
 
@@ -80,7 +108,9 @@
   Q.applyScheme(Q.store.state.settings.translit);
   railFoot();
   window.addEventListener('hashchange', render);
+  let navTimer = null;
   Q.store.onChange(() => {
+    clearTimeout(navTimer); navTimer = setTimeout(Q.refreshNav, 200);
     Q.applyTheme(); Q.applyFont();
     if (Q.store.state.settings.translit !== Q.SCHEME) Q.applyScheme(Q.store.state.settings.translit);
   });

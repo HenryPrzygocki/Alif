@@ -108,8 +108,8 @@
         if (Q.daysBetween(end, date) > 0) cls = 'pad';
         else if (key === Q.dayKey(r.night) || key === Q.dayKey(r.fast)) cls = 'ramadan';
         else if (diff > 0) cls = 'future';
-        else if (rec && rec.n) {
-          const f = rec.n / goal;
+        else if (rec && (rec.n || rec.q)) {
+          const f = (rec.n + 5 * (rec.q || 0)) / goal;
           cls = f >= 1 ? 'h4' : f >= 0.5 ? 'h3' : f >= 0.25 ? 'h2' : 'h1';
         }
         if (diff === 0) cls += ' today';
@@ -118,7 +118,7 @@
           let txt = `<b>${Q.fmtDate(date, { weekday: 'short', month: 'short', day: 'numeric' })}</b><br>`;
           if (cls.includes('ramadan')) txt += key === Q.dayKey(r.night) ? 'Ramadan begins at sunset · first taraweeh' : 'First fast of Ramadan';
           else if (diff > 0) txt += `${diff} ${diff === 1 ? 'day' : 'days'} from now`;
-          else txt += rec && rec.n ? `${rec.n} reads · ${Q.pct(1 - rec.w / rec.n)} right` : 'No practice';
+          else txt += rec && (rec.n || rec.q) ? [rec.n ? `${rec.n} letters · ${Q.pct(1 - rec.w / rec.n)} right` : '', rec.q ? `${rec.q} verse ${rec.q === 1 ? 'practice' : 'practices'}` : ''].filter(Boolean).join('<br>') : 'No practice';
           Q.showTip(txt, e.clientX, e.clientY);
         });
         cell.addEventListener('mouseleave', Q.hideTip);
@@ -137,6 +137,24 @@
     const any30 = series.some(d => d.n);
 
     const tile = (v, k, small) => h('div', { class: 'card stat' }, h('span', { class: 'v' }, v, small ? h('small', null, small) : null), h('span', { class: 'k' }, k));
+
+    /* Quran memorization */
+    const qt = Q.store.qTotals();
+    const quranSection = h('section', { class: 'card stack' },
+      h('div', { class: 'card-head' }, h('h2', null, 'Surahs'), h('a', { class: 'small', href: '#surahs' }, 'Open surahs')),
+      h('div', { class: 'grid cols-3', style: { gap: '14px' } },
+        h('div', { class: 'stat' }, h('span', { class: 'v' }, qt.memorized), h('span', { class: 'k' }, 'verses memorized (held a week or more)')),
+        h('div', { class: 'stat' }, h('span', { class: 'v' }, qt.learned - qt.memorized), h('span', { class: 'k' }, 'verses still settling in')),
+        h('div', { class: 'stat' }, h('span', { class: 'v' }, qt.due), h('span', { class: 'k' }, 'due for review today'))),
+      h('div', { class: 'srows', id: 'progress-surahs' }, h('p', { class: 'empty' }, qt.learned ? 'Loading…' : 'Learn a verse on the Surahs page and it will be tracked here.')));
+    if (qt.learned) Q.quran.loadIndex().then(index => {
+      const el = quranSection.querySelector('#progress-surahs');
+      const rows = index.map(meta => ({ meta, sum: Q.store.qSummary(meta.n, meta.verses) })).filter(x => x.sum.mem || x.sum.learning);
+      el.replaceChildren(...rows.map(({ meta, sum }) => h('a', { class: 'srow', href: '#surah-' + meta.n, style: { gridTemplateColumns: 'minmax(0, 1fr) minmax(120px, 2fr) 150px' } },
+        h('span', { class: 'srow-name' }, h('b', null, meta.name), h('span', { class: 'small muted' }, Q.SCHEME === 'en' ? meta.en : meta.pt)),
+        h('div', { class: 'qbar' }, h('i', { class: 'mem', style: { width: (sum.mem / sum.count * 100) + '%' } }), h('i', { class: 'lrn', style: { width: (sum.learning / sum.count * 100) + '%' } })),
+        h('span', { class: 'small num' }, `${sum.mem} memorized · ${sum.learning} learning${sum.due ? ' · ' + sum.due + ' due' : ''}`))));
+    }).catch(() => {});
 
     const tiles = h('div', { class: 'grid cols-4' },
       tile(Q.fmtInt(tot.n), 'letters read in total'),
@@ -225,7 +243,8 @@
             h('span', null, h('i', { style: { background: 'var(--m5)' } }), 'goal met'),
             h('span', null, h('i', { style: { background: 'var(--gold)' } }), 'Ramadan'))),
         calendar(goal)),
-      h('section', { class: 'card stack' }, h('div', { class: 'card-head' }, h('h2', null, 'Last 30 days')), trends),
+      quranSection,
+      h('section', { class: 'card stack' }, h('div', { class: 'card-head' }, h('h2', null, 'Letters: last 30 days')), trends),
       h('section', { class: 'card stack' },
         h('div', { class: 'card-head' }, h('h2', null, 'Every letter'), legend),
         h('p', { class: 'small muted' }, 'Based on your last 12 tries of each letter. A letter needs a few reads before it can count as solid. Click one to open it.'),

@@ -23,13 +23,27 @@
       days: {},        // YYYY-MM-DD -> { n, w, ms, rounds, rMs, rUnits }
       sessions: [],    // { t, mode, n, w, ms }
       draft: '',
+      quran: freshQuran(),
     };
   }
+  function freshQuran() {
+    return {
+      list: [],        // surahs you are learning, most recent first
+      v: {},           // "surah:verse" -> { s: stage 1-6, due: YYYY-MM-DD, n: reviews, miss: lapses, last }
+      prefs: { text: 'translit', meaning: false, trans: true, reciter: 'husary', speed: 1, repeat: 1, gap: false, loop: false, basmala: true },
+      last: null,      // { n, tab, verse }
+    };
+  }
+  // days until the next review, by stage
+  const INTERVALS = [0, 1, 3, 7, 14, 30, 60];
 
   function merge(base, saved) {
     const out = Object.assign(base, saved);
     out.settings = Object.assign(fresh().settings, saved.settings || {});
     out.practice = Object.assign(fresh().practice, saved.practice || {});
+    const q = saved.quran || {};
+    out.quran = Object.assign(freshQuran(), q);
+    out.quran.prefs = Object.assign(freshQuran().prefs, q.prefs || {});
     return out;
   }
 
@@ -165,9 +179,70 @@
       return S.days[Q.dayKey()] || { n: 0, w: 0, ms: 0, rounds: 0, rMs: 0, rUnits: 0 };
     },
 
+    /* ---------- Quran memorization ---------- */
+    qPrefs() { return S.quran.prefs; },
+    setQPref(k, v) { S.quran.prefs[k] = v; store.save(); },
+    qAdd(n) {
+      S.quran.list = [n, ...S.quran.list.filter(x => x !== n)];
+      store.save();
+    },
+    qRemove(n) { S.quran.list = S.quran.list.filter(x => x !== n); store.save(); },
+    qSetLast(last) { S.quran.last = Object.assign({}, S.quran.last, last); store.save(); },
+    qVerse(key) { return S.quran.v[key] || null; },
+    qStatus(key) {
+      const r = S.quran.v[key];
+      if (!r) return 'new';
+      return r.s >= 3 ? 'memorized' : 'learning';
+    },
+    /* first time a verse is learned in the coach */
+    qLearned(key) {
+      if (!S.quran.v[key]) {
+        S.quran.v[key] = { s: 1, due: Q.dayKey(Q.addDays(new Date(), 1)), n: 0, miss: 0, last: Date.now() };
+        store._day().q = (store._day().q || 0) + 1;
+        store.save();
+      }
+    },
+    /* grade a recall: 'again' | 'hard' | 'good' */
+    qGrade(key, grade) {
+      const r = S.quran.v[key] || (S.quran.v[key] = { s: 0, due: Q.dayKey(), n: 0, miss: 0, last: 0 });
+      r.n++; r.last = Date.now();
+      if (grade === 'again') { r.s = 1; r.miss++; r.due = Q.dayKey(Q.addDays(new Date(), 1)); }
+      else if (grade === 'hard') { r.s = Math.max(1, r.s); r.due = Q.dayKey(Q.addDays(new Date(), Math.max(1, Math.floor(INTERVALS[r.s] / 2)))); }
+      else { r.s = Math.min(6, r.s + 1); r.due = Q.dayKey(Q.addDays(new Date(), INTERVALS[r.s])); }
+      const d = store._day();
+      d.q = (d.q || 0) + 1;
+      if (grade === 'again') d.qw = (d.qw || 0) + 1;
+      store.save();
+    },
+    qDue(onDay = Q.dayKey()) {
+      return Object.entries(S.quran.v).filter(([, r]) => r.due <= onDay).map(([k]) => k)
+        .sort((a, b) => { const [x1, y1] = a.split(':').map(Number), [x2, y2] = b.split(':').map(Number); return x1 - x2 || y1 - y2; });
+    },
+    qNextDue() {
+      const today = Q.dayKey();
+      const future = Object.values(S.quran.v).map(r => r.due).filter(d => d > today).sort();
+      return future[0] || null;
+    },
+    qSummary(n, count) {
+      let mem = 0, learning = 0, due = 0;
+      const today = Q.dayKey();
+      for (let v = 1; v <= count; v++) {
+        const r = S.quran.v[n + ':' + v];
+        if (!r) continue;
+        if (r.s >= 3) mem++; else learning++;
+        if (r.due <= today) due++;
+      }
+      return { mem, learning, fresh: count - mem - learning, due, count };
+    },
+    qTotals() {
+      const all = Object.values(S.quran.v);
+      return { learned: all.length, memorized: all.filter(r => r.s >= 3).length, due: store.qDue().length };
+    },
+
     streak() {
       let cur = 0, best = 0, run = 0;
-      const keys = Object.keys(S.days).filter(k => S.days[k].n > 0).sort();
+      const active = d => d && (d.n > 0 || d.q > 0);
+      const keys = Object.keys(S.days).filter(k => active(S.days[k])).sort();
       let prev = null;
       for (const k of keys) {
         const d = Q.parseDay(k);
@@ -177,8 +252,8 @@
       }
       // current streak: ends today, or yesterday if today isn't done yet
       let day = new Date();
-      if (!(S.days[Q.dayKey(day)] || {}).n) day = Q.addDays(day, -1);
-      while ((S.days[Q.dayKey(day)] || {}).n) { cur++; day = Q.addDays(day, -1); }
+      if (!active(S.days[Q.dayKey(day)])) day = Q.addDays(day, -1);
+      while (active(S.days[Q.dayKey(day)])) { cur++; day = Q.addDays(day, -1); }
       return { cur, best: Math.max(best, cur) };
     },
 
@@ -216,4 +291,8 @@
     },
     reset() { S = fresh(); store.save(true); },
   };
+
+  // never lose the last few seconds of work when the tab closes
+  window.addEventListener('pagehide', () => Q.storage.set(KEY, S));
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') Q.storage.set(KEY, S); });
 })(window.Q = window.Q || {});

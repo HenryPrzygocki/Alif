@@ -36,7 +36,7 @@
     root.append(h('div', { class: 'page' },
       h('div', { class: 'page-head' },
         h('div', null,
-          h('h1', null, 'Practice'),
+          h('h1', null, 'Letter practice'),
           h('p', null, 'Read-aloud modes: say each letter from right to left, reveal, and click what you missed. Quiz modes: pick the answer and the site checks it.'))),
       layout));
 
