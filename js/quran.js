@@ -21,7 +21,7 @@
     index: null,
     async loadIndex() {
       if (!quran.index) {
-        const res = await fetch('data/quran/index.json');
+        const res = await fetch(Q.asset('data/quran/index.json'));
         if (!res.ok) throw new Error('Could not load the surah list');
         quran.index = await res.json();
       }
@@ -30,7 +30,7 @@
     meta(n) { return (quran.index || []).find(x => x.n === n) || null; },
     async load(n) {
       if (docs[n]) return docs[n];
-      const res = await fetch(`data/quran/${n}.json`);
+      const res = await fetch(Q.asset(`data/quran/${n}.json`));
       if (!res.ok) throw new Error('Could not load this surah');
       const doc = await res.json();
       doc.verses.forEach((v, i) => { v.n = i + 1; v.key = n + ':' + (i + 1); v.words = v.ar.split(' '); });

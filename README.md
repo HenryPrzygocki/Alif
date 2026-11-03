@@ -27,6 +27,12 @@ python3 -m http.server 8000
 
 Then open <http://localhost:8000>.
 
+### Releasing a change
+
+Run `python3 tools/stamp.py` before committing. It puts a new version on every script and stylesheet
+(so browsers fetch the new files instead of cached ones) and updates `version.json`, which open tabs
+check to show a "Reload now" bar.
+
 ### Publish with GitHub Pages
 
 Repository **Settings → Pages → Build and deployment → Deploy from a branch → `main` / `(root)`**. The site appears at `https://<username>.github.io/<repo>/`.

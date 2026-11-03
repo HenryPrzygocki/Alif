@@ -781,3 +781,11 @@ hr.soft { border: 0; border-top: 1px dashed var(--line); margin: 6px 0; width: 1
   .qdisplay-details[open] > summary { border-radius: var(--r) var(--r) 0 0; border-bottom: 0; }
   .qdisplay-details[open] > .qdisplay { border-radius: 0 0 var(--r) var(--r); }
 }
+
+#update-bar {
+  position: fixed; z-index: 70; left: 50%; transform: translateX(-50%);
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  display: flex; gap: 14px; align-items: center; padding: 10px 12px 10px 18px;
+  background: var(--ink); color: var(--sheet); border-radius: 10px; box-shadow: var(--shadow); font-weight: 600; font-size: 14px;
+  max-width: calc(100vw - 32px);
+}

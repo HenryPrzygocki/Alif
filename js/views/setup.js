@@ -74,7 +74,9 @@
         h('p', { class: 'small', style: { color: 'var(--ink-2)', maxWidth: '70ch' } },
           'Your progress lives only in this browser on this computer. Download a backup now and then, and use it to move your progress to another device or browser.'),
         h('div', { class: 'row' }, exportBtn, h('button', { class: 'btn', type: 'button', onclick: () => fileIn.click() }, 'Restore from backup'), fileIn, resetBtn),
-        h('p', { class: 'small muted' }, `${Object.keys(st.days).length} days and ${Q.fmtInt(Q.store.totals().n)} reads saved.`))));
+        h('p', { class: 'small muted' }, `${Object.keys(st.days).length} days and ${Q.fmtInt(Q.store.totals().n)} reads saved.`)),
+      h('p', { class: 'small muted' }, 'Version ' + (Q.VERSION ? Q.VERSION.replace(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2}).*/, '$1-$2-$3 $4:$5 UTC') : 'local'),
+        '. If something looks out of date, press Ctrl+Shift+R (Cmd+Shift+R on a Mac) to reload everything.')));
     renderPreview();
   };
 })(window.Q = window.Q || {});

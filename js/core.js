@@ -129,6 +129,10 @@
     return out;
   };
 
+  /* Version stamp (tools/stamp.py): added to data URLs so updates are never stuck in the cache */
+  Q.VERSION = window.HURUF_VERSION || '';
+  Q.asset = path => path + (Q.VERSION ? (path.includes('?') ? '&' : '?') + 'v=' + Q.VERSION : '');
+
   /* Arabic font helpers */
   Q.arabicFontCss = id => (Q.FONT[id] || Q.FONT.hafs).css;
 })(window.Q = window.Q || {});

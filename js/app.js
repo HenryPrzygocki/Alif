@@ -103,6 +103,24 @@
   };
   Q.hideTip = () => tip.classList.remove('show');
 
+  /* New version published? Offer a one-click reload (checks on load, on return to the tab, every 20 min) */
+  async function checkUpdate() {
+    if (!Q.VERSION || document.getElementById('update-bar')) return;
+    try {
+      const res = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) return;
+      const { v } = await res.json();
+      if (v && v > Q.VERSION) {
+        document.body.append(h('div', { id: 'update-bar', role: 'status' },
+          h('span', null, 'A new version of Huruf is ready.'),
+          h('button', { class: 'btn primary sm', type: 'button', onclick: () => { Q.store.save(true); location.reload(); } }, 'Reload now')));
+      }
+    } catch (e) { /* offline: try later */ }
+  }
+  setTimeout(checkUpdate, 2500);
+  setInterval(checkUpdate, 20 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
+
   Q.applyTheme();
   Q.applyFont();
   Q.applyScheme(Q.store.state.settings.translit);
