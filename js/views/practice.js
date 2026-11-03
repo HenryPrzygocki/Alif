@@ -53,16 +53,46 @@
       if (mode().sound) ids = ids.filter(id => !Q.L[id].noSound);
       return ids;
     }
-    const weightOf = id => cfg.focusWeak ? store.weight(id) : 1;
     const marks = () => cfg.marks && cfg.marks.length ? cfg.marks : ['a'];
 
-    function nextLetter(ids, prev, avoid = []) {
-      if (cfg.lookalikes && prev && Math.random() < 0.35) {
-        const like = (Q.L[prev].like || []).filter(x => ids.includes(x) && !avoid.includes(x));
-        if (like.length) return Q.pick(like);
+    /* Picking letters: weak ones come up more often, but never back to back, and with surprises.
+       - weak letters are at most about 2.5× as likely as strong ones
+       - the last few letters you saw (about half the pool, up to 4) sit out
+       - 1 pick in 4 is plain random; with a focus list (e.g. "Weakest 6"), 1 in 4 comes from outside it */
+    let recent = [];
+    const remember = id => { recent.push(id); if (recent.length > 12) recent.shift(); };
+    function widePool() {
+      let ids = Q.LETTERS.filter(l => cfg.groups.includes(l.group)).map(l => l.id);
+      if (mode().sound) ids = ids.filter(id => !Q.L[id].noSound);
+      return ids;
+    }
+    const weightOf = id => {
+      if (!cfg.focusWeak) return 1;
+      return 1 + 1.5 * Math.min(1, Math.max(0, (store.weight(id) - 0.8) / 4));
+    };
+    function choose(ids, avoid = []) {
+      const k = Math.min(4, Math.floor(ids.length / 2));
+      const resting = new Set(recent.slice(-k));
+      let choices = ids.filter(x => !avoid.includes(x) && !resting.has(x));
+      if (!choices.length) choices = ids.filter(x => !avoid.includes(x) && x !== recent[recent.length - 1]);
+      if (!choices.length) choices = ids.filter(x => !avoid.includes(x));
+      if (!choices.length) choices = ids;
+      if (only && Math.random() < 0.25) {
+        const wider = widePool().filter(x => !ids.includes(x) && !resting.has(x) && !avoid.includes(x));
+        if (wider.length) return Q.pick(wider);
       }
-      const choices = ids.filter(x => x !== prev && !avoid.includes(x));
-      return Q.weightedPick(choices.length ? choices : ids, weightOf);
+      if (Math.random() < 0.25) return Q.pick(choices);
+      return Q.weightedPick(choices, weightOf);
+    }
+    function nextLetter(ids, prev, avoid = []) {
+      let id = null;
+      if (cfg.lookalikes && prev && Math.random() < 0.3) {
+        const like = (Q.L[prev].like || []).filter(x => ids.includes(x) && x !== prev && !avoid.includes(x) && !recent.slice(-3).includes(x));
+        if (like.length) id = Q.pick(like);
+      }
+      if (!id) id = choose(ids, prev ? [...avoid, prev] : avoid);
+      remember(id);
+      return id;
     }
 
     function makeRow() {
@@ -131,7 +161,8 @@
 
     function makeQuiz() {
       const ids = pool();
-      const target = Q.weightedPick(ids, weightOf);
+      const target = choose(ids);
+      remember(target);
       const l = Q.L[target];
       if (cfg.mode === 'quiz') {
         const near = [...new Set([...(l.like || []), ...(l.soundLike || [])])].filter(x => x !== target);
