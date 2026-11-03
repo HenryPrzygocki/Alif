@@ -85,6 +85,7 @@
       const d = store._day();
       units.forEach(u => {
         store._letter(u.letter, u.wrong);
+        if (u.wrong && u.said && u.said !== u.letter) S.conf[u.letter + '>' + u.said] = (S.conf[u.letter + '>' + u.said] || 0) + 1;
         store._bump(S.ml, mode + ':' + u.letter, u.wrong);
         if (u.vowel) store._bump(S.syl, u.letter + ':' + u.vowel, u.wrong);
         d.n++; if (u.wrong) d.w++;
@@ -271,6 +272,40 @@
         });
       }
       return out;
+    },
+
+    /* Mix-ups as pairs, both directions together: ض→ص and ص→ض count as one pair */
+    mixups(n = 8, min = 1) {
+      const pairs = {};
+      for (const [k, c] of Object.entries(S.conf)) {
+        const [a, b] = k.split('>');
+        if (!Q.L[a] || !Q.L[b]) continue;
+        const [x, y] = Q.L[a].order < Q.L[b].order ? [a, b] : [b, a];
+        const key = x + '|' + y;
+        const p = pairs[key] || (pairs[key] = { a: x, b: y, count: 0, ab: 0, ba: 0 });
+        p.count += c;
+        if (a === x) p.ab += c; else p.ba += c;
+      }
+      return Object.values(pairs).filter(p => p.count >= min).sort((p, q) => q.count - p.count).slice(0, n);
+    },
+    /* letters you mix this one up with, most frequent first */
+    partners(id) {
+      return store.mixups(50).filter(p => p.a === id || p.b === id)
+        .map(p => ({ id: p.a === id ? p.b : p.a, count: p.count }));
+    },
+    /* Your weak spots: struggling letters plus the letters you mix them up with.
+       Returns { ids, why: { id: reason } }, or ids = [] when there is not enough practice yet. */
+    weakSpots(max = 12) {
+      const why = {};
+      const ids = [];
+      const add = (id, reason) => { if (!Q.L[id] || ids.length >= max) return; if (!ids.includes(id)) ids.push(id); if (!why[id]) why[id] = reason; };
+      const weak = store.weakest(10, 3).filter(x => x.m < 0.7);
+      weak.forEach(({ l }) => {
+        add(l.id, store.LEVELS[store.level(l.id)].toLowerCase());
+        store.partners(l.id).slice(0, 2).forEach(p => add(p.id, 'you mix it up with ' + l.name));
+      });
+      store.mixups(6, 2).forEach(p => { add(p.a, 'mixed up with ' + Q.L[p.b].name); add(p.b, 'mixed up with ' + Q.L[p.a].name); });
+      return { ids: ids.length >= 2 ? ids : [], why };
     },
 
     confusions(n = 8) {

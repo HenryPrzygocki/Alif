@@ -789,3 +789,17 @@ hr.soft { border: 0; border-top: 1px dashed var(--line); margin: 6px 0; width: 1
   background: var(--ink); color: var(--sheet); border-radius: 10px; box-shadow: var(--shadow); font-weight: 600; font-size: 14px;
   max-width: calc(100vw - 32px);
 }
+
+/* weak spots and mix-ups */
+.focus-box { display: grid; gap: 6px; padding: 10px; border-radius: var(--r-sm); background: var(--gold-soft); }
+.chip.static { cursor: default; background: var(--sheet); }
+.chip .why { font-size: 11.5px; color: var(--ink-3); }
+.said { display: grid; justify-items: center; gap: 3px; font-size: 11.5px; color: var(--bad); font-weight: 600; }
+.said-opts { display: flex; flex-direction: row-reverse; gap: 4px; }
+.said-opt { min-width: 38px; height: 38px; border: 1px solid var(--line); border-radius: 8px; background: var(--sheet); cursor: pointer; font-family: var(--f-arabic); font-size: 22px; line-height: 1; color: var(--ink); }
+.said-opt:hover { border-color: var(--bad); }
+.said-opt.on { background: var(--bad-soft); border-color: var(--bad); }
+.mix-pair { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line-2); }
+.mix-pair .pair { font-family: var(--f-arabic); font-size: 34px; line-height: 1.5; display: flex; gap: 6px; align-items: center; direction: rtl; }
+.mix-pair .pair i { font-style: normal; font-family: var(--f-body); font-size: 16px; color: var(--ink-3); }
+.mix-pair .dir { font-size: 12px; color: var(--ink-3); }

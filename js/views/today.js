@@ -105,11 +105,14 @@
         cur.n >= 4 ? ' Huruf drills the letters and vowels for now. Sukūn, shadda and real words are the next modules to build.' : ''));
 
     /* trickiest letters */
-    const weak = Q.store.weakest(5, 3);
+    // only letters that really are weak (below "Good"), not just the lowest of a strong set
+    const weak = Q.store.weakest(5, 3).filter(x => x.m < 0.8);
+    const pairsToday = Q.store.mixups(2, 2);
     const weakCard = h('section', { class: 'card' },
-      h('div', { class: 'card-head' }, h('h2', null, 'Trickiest letters right now'), weak.length ? h('a', { class: 'small', href: '#progress' }, 'All stats') : null),
-      weak.length
+      h('div', { class: 'card-head' }, h('h2', null, 'Your weak spots'), weak.length || pairsToday.length ? h('a', { class: 'small', href: '#progress' }, 'All stats') : null),
+      weak.length || pairsToday.length
         ? h('div', { class: 'stack' },
+          weak.length ? null : h('p', { class: 'small muted' }, 'No struggling letters right now. These pairs still trip you up:'),
           h('div', { class: 'weak-list' }, weak.map(({ l, m, r: rec }) =>
             h('div', { class: 'weak-item' },
               h('span', { class: 'ar' }, l.ch),
@@ -118,7 +121,8 @@
                   h('span', { class: 'nm' }, l.name), h('span', { class: 'small muted num' }, `${Q.pct(1 - rec.w / rec.n)} right · ${rec.n} reads`)),
                 h('div', { class: 'bar' }, h('i', { style: { width: Math.round(m * 100) + '%' } }))),
               h('span', { class: 'tag' }, Q.store.LEVELS[Q.store.level(l.id)])))),
-          h('button', { class: 'btn', type: 'button', onclick: () => { Q.practiceOnly = weak.map(x => x.l.id); Q.go('practice'); } }, 'Practise these 5'))
+          pairsToday.length ? h('div', { class: 'stack', style: { gap: '0' } }, h('div', { class: 'eyebrow', style: { marginTop: '6px' } }, 'You often mix up'), pairsToday.map(Q.mixPairRow)) : null,
+          h('button', { class: 'btn primary', type: 'button', onclick: () => { const sp = Q.store.weakSpots(); Q.practiceOnly = sp.ids.length ? sp.ids : weak.map(x => x.l.id); Q.practiceWhy = sp.ids.length ? sp.why : null; Q.go('practice'); } }, 'Practise my weak spots'))
         : h('p', { class: 'empty' }, 'Do a few rounds of practice and the letters you miss most will show up here.'));
 
     /* quick start */

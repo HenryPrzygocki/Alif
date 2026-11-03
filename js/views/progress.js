@@ -128,6 +128,17 @@
     return grid;
   }
 
+  /* one mix-up pair: both letters, how often each way, and a button to drill just the two */
+  Q.mixPairRow = function (p) {
+    const A = Q.L[p.a], B = Q.L[p.b];
+    const dirs = [p.ab ? `${A.name} read as ${B.name} ${p.ab}×` : '', p.ba ? `${B.name} read as ${A.name} ${p.ba}×` : ''].filter(Boolean).join(' · ');
+    return h('div', { class: 'mix-pair' },
+      h('span', { class: 'pair' }, A.ch, h('i', null, '⇄'), B.ch),
+      h('div', null, h('b', null, `${A.name} and ${B.name}`), h('div', { class: 'dir' }, dirs)),
+      h('span', { class: 'small muted num' }, p.count + '×'),
+      h('button', { class: 'btn sm', type: 'button', onclick: () => { Q.practiceOnly = [p.a, p.b]; Q.practiceWhy = { [p.a]: 'mixed up with ' + B.name, [p.b]: 'mixed up with ' + A.name }; Q.go('practice'); } }, 'Practise the pair'));
+  };
+
   Q.views.progress = function (root) {
     const st = Q.store.state;
     const tot = Q.store.totals();
@@ -188,13 +199,10 @@
     const legend = h('div', { class: 'legend' }, Q.store.LEVELS.map((name, i) => h('span', null, h('i', { class: 'l' + i, style: { background: i ? `var(--m${i})` : 'transparent' } }), name)));
 
     /* confusions */
-    const conf = Q.store.confusions(6);
-    const confEl = conf.length
-      ? h('div', { class: 'conf-list' }, conf.map(c => h('div', { class: 'conf' },
-        h('span', { class: 'ar' }, c.target.ch), h('span', { class: 'arrow' }, '→'), h('span', { class: 'ar', style: { color: 'var(--bad)' } }, c.picked.ch),
-        h('span', { class: 'small' }, `${c.target.name} taken for ${c.picked.name}`),
-        h('span', { class: 'small muted num' }, c.count + '×'))))
-      : h('p', { class: 'empty' }, 'No mix-ups yet. They are recorded by the quiz modes.');
+    const mix = Q.store.mixups(8);
+    const confEl = mix.length
+      ? h('div', { class: 'conf-list' }, mix.map(Q.mixPairRow))
+      : h('p', { class: 'empty' }, 'No mix-ups yet. They come from the quizzes, and from read-aloud practice when you tap which letter you said instead.');
 
     /* hardest sounds */
     const syl = Object.entries(st.syl)

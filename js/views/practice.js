@@ -20,8 +20,9 @@
     if (!Q.MODE[cfg.mode]) cfg.mode = 'sounds';
     let session = null;
     let round = null;
-    let only = Q.practiceOnly || null;   // temporary letter list (e.g. "practise my weakest")
-    Q.practiceOnly = null;
+    let only = Q.practiceOnly || null;   // temporary letter list (e.g. "my weak spots")
+    let onlyWhy = Q.practiceWhy || null; // why each letter is in it
+    Q.practiceOnly = null; Q.practiceWhy = null;
     let advanceTimer = null;
 
     const mode = () => Q.MODE[cfg.mode];
@@ -86,7 +87,12 @@
     }
     function nextLetter(ids, prev, avoid = []) {
       let id = null;
-      if (cfg.lookalikes && prev && Math.random() < 0.3) {
+      // the letter you usually mix this one up with (your own mix-ups) comes right after it
+      if (prev && !id) {
+        const mine = store.partners(prev).map(p => p.id).filter(x => ids.includes(x) && x !== prev && !avoid.includes(x));
+        if (mine.length && Math.random() < (only ? 0.45 : 0.25)) id = mine[0];
+      }
+      if (!id && cfg.lookalikes && prev && Math.random() < 0.3) {
         const like = (Q.L[prev].like || []).filter(x => ids.includes(x) && x !== prev && !avoid.includes(x) && !recent.slice(-3).includes(x));
         if (like.length) id = Q.pick(like);
       }
@@ -151,6 +157,7 @@
         opts.push({ letter: id, vowel: vv, text: sy.text, sound: sy.sound });
       };
       add(target, v);
+      store.partners(target).slice(0, 2).forEach(p => add(p.id, v));
       const l = Q.L[target];
       const like = Q.shuffle(l.like || []), soundLike = Q.shuffle(l.soundLike || []);
       const otherVowels = Q.shuffle(marks().filter(x => x !== v));
@@ -173,6 +180,7 @@
         const set = new Set([target]);
         const names = new Set([plain(l.name)]);
         const tryAdd = x => { if (Q.L[x] && set.size < 4 && !set.has(x) && !names.has(plain(Q.L[x].name))) { set.add(x); names.add(plain(Q.L[x].name)); } };
+        store.partners(target).slice(0, 2).forEach(p => tryAdd(p.id));
         Q.shuffle(near).forEach(tryAdd);
         Q.shuffle(Q.LETTERS.map(x => x.id)).forEach(tryAdd);
         const dir = Math.random() < 0.5 ? 'toLetter' : 'toName';
@@ -225,7 +233,7 @@
       const activeMs = performance.now() - round.shownAt;
       store.recordRound({
         mode: cfg.mode,
-        units: round.units.map(u => ({ letter: u.letter, vowel: u.vowel, wrong: u.wrong })),
+        units: round.units.map(u => ({ letter: u.letter, vowel: u.vowel, wrong: u.wrong, said: u.said })),
         revealMs: round.revealMs, activeMs,
       });
       const wrong = round.units.filter(u => u.wrong);
@@ -327,6 +335,7 @@
               round.units.length > 1 ? h('span', { class: 'idx' }, i + 1) : null,
               h('span', { class: 'glyph' }, u.text),
               h('span', { class: 'ans' + (round.revealed ? ' show' : ' hide') }, answerLabel(u))),
+            round.revealed && u.wrong ? saidChips(u) : null,
             round.revealed && Q.letterAudioOn() ? h('button', { class: 'hear', type: 'button', title: 'Hear it', 'aria-label': 'Hear ' + Q.L[u.letter].name, onclick: () => Q.hearLetter(u.letter, cfg.mode === 'names' ? null : u.vowel) }, '▶ Hear') : null));
         });
         stageEl.replaceChildren(wrap);
@@ -350,6 +359,20 @@
         renderQuiz();
       }
       renderActions();
+    }
+
+    /* After marking a letter wrong: which letter did you say instead? (optional, one tap) */
+    function saidChips(u) {
+      const l = Q.L[u.letter];
+      const cands = [...new Set([...store.partners(u.letter).map(p => p.id), ...(l.like || []), ...(l.soundLike || [])])]
+        .filter(id => Q.L[id] && id !== u.letter && !(mode().sound && Q.L[id].noSound)).slice(0, 5);
+      if (!cands.length) return null;
+      return h('div', { class: 'said' },
+        h('span', null, 'Said instead?'),
+        h('div', { class: 'said-opts' }, cands.map(id => {
+          const text = cfg.mode === 'names' ? Q.L[id].ch : Q.syllable(id, u.vowel || 'a').text;
+          return h('button', { type: 'button', class: 'said-opt' + (u.said === id ? ' on' : ''), title: Q.L[id].name, onclick: () => { u.said = u.said === id ? null : id; renderRound(); } }, text);
+        })));
     }
 
     function renderQuiz() {
@@ -512,15 +535,19 @@
           h('div', { class: 'row', style: { gap: '4px' } },
             h('button', { class: 'btn ghost', type: 'button', style: small, onclick: () => { only = null; set('groups', allOn ? [] : Q.GROUPS.map(g => g.id)); } }, allOn ? 'None' : 'All'),
             h('button', {
-              class: 'btn ghost', type: 'button', style: small, title: 'Practise only your 6 weakest letters',
+              class: 'btn ghost', type: 'button', style: small, title: 'Your struggling letters plus the letters you mix them up with',
               onclick: () => {
-                const weak = store.weakest(6, 2).map(x => x.l.id);
-                if (weak.length < 2) { Q.toast('Practise a little more first so I can find your weak letters'); return; }
-                only = weak; renderSetup(); startSession();
+                const spots = store.weakSpots();
+                if (!spots.ids.length) { Q.toast('Practise a little more first so I can find your weak spots'); return; }
+                only = spots.ids; onlyWhy = spots.why; renderSetup(); startSession();
               },
-            }, 'Weakest 6'))),
-        only ? h('div', { class: 'row small' }, h('span', { class: 'muted' }, 'Only: '), h('span', { class: 'ar', style: { fontSize: '22px' } }, only.map(id => Q.L[id].ch).join(' ')),
-          h('button', { class: 'btn ghost', type: 'button', style: small, onclick: () => { only = null; renderSetup(); startSession(); } }, 'Clear')) : null,
+            }, 'My weak spots'))),
+        only ? h('div', { class: 'focus-box' },
+          h('div', { class: 'row', style: { justifyContent: 'space-between' } },
+            h('span', { class: 'small muted' }, onlyWhy ? 'Your weak spots' : 'Only these letters'),
+            h('button', { class: 'btn ghost', type: 'button', style: small, onclick: () => { only = null; onlyWhy = null; renderSetup(); startSession(); } }, 'Clear')),
+          h('div', { class: 'chips' }, only.map(id => h('span', { class: 'chip static', title: onlyWhy && onlyWhy[id] ? Q.L[id].name + ': ' + onlyWhy[id] : Q.L[id].name },
+            h('span', { class: 'ar' }, Q.L[id].ch), onlyWhy && onlyWhy[id] ? h('span', { class: 'why' }, onlyWhy[id]) : null)))) : null,
         h('div', { class: 'chips' }, Q.GROUPS.map(g => {
           const on = cfg.groups.includes(g.id);
           return h('button', {
