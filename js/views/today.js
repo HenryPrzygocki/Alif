@@ -1,4 +1,4 @@
-/* Huruf — Today: countdown, Iqra path, today's numbers, where to start. */
+/* Alif — Today: countdown, Iqra path, today's numbers, where to start. */
 (function (Q) {
   'use strict';
   const { h, s } = Q;
@@ -104,7 +104,7 @@
         h('span', { class: 'small muted' }, 'Click the book you are on with your teacher')),
       track,
       h('p', { class: 'small', style: { color: 'var(--ink-2)' } }, h('b', null, `Iqra ${cur.n}: `), Q.mixed(Q.fill(cur.covers)),
-        cur.n >= 4 ? ' Huruf drills the letters and vowels for now. Sukūn, shadda and real words are the next modules to build.' : ''));
+        cur.n >= 4 ? ' For now the site drills the letters and vowels. Sukūn, shadda and real words are the next modules to build.' : ''));
 
     /* trickiest letters */
     // only letters that really are weak (below "Good"), not just the lowest of a strong set

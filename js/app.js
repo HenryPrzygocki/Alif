@@ -1,4 +1,4 @@
-/* Huruf — app shell: navigation, theme, fonts. */
+/* Alif — app shell: navigation, theme, fonts. */
 (function (Q) {
   'use strict';
   const { h, s } = Q;
@@ -84,7 +84,7 @@
       console.error(e);
       root.append(h('div', { class: 'page' }, h('div', { class: 'card' }, h('h2', null, 'Something broke on this page'), h('p', { class: 'muted' }, String(e.message || e)))));
     }
-    document.title = navId === 'today' ? 'Huruf' : `${title} · Huruf`;
+    document.title = navId === 'today' ? 'Alif' : `${title} · Alif`;
     window.scrollTo(0, 0);
   }
   Q.refreshNav = () => { drawNav(); const a = nav.querySelector(`a[data-route="${currentId}"]`); if (a) a.setAttribute('aria-current', 'page'); };
@@ -136,7 +136,7 @@
       const { v } = await res.json();
       if (v && v > Q.VERSION) {
         document.body.append(h('div', { id: 'update-bar', role: 'status' },
-          h('span', null, 'A new version of Huruf is ready.'),
+          h('span', null, 'A new version of Alif is ready.'),
           h('button', { class: 'btn primary sm', type: 'button', onclick: () => { Q.store.save(true); location.reload(); } }, 'Reload now')));
       }
     } catch (e) { /* offline: try later */ }

@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Huruf</title>
+<title>Alif</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="Learn to read the Quran: the Arabic letters first, then short surahs by heart, with recitation by al-Husari. Free, no sign-up.">
 <meta name="theme-color" content="#0F2C26">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Huruf">
-<meta property="og:title" content="Huruf · Learn to read the Quran">
+<meta property="og:site_name" content="Alif">
+<meta property="og:title" content="Alif · Learn to read the Quran">
 <meta property="og:description" content="The Arabic letters first, then short surahs by heart. Practice, quizzes, recitation and progress, on the road to Ramadan. Free, no sign-up.">
-<meta property="og:url" content="https://henryprzygocki.github.io/Learn-Arabic/">
-<meta property="og:image" content="https://henryprzygocki.github.io/Learn-Arabic/img/og.png">
+<meta property="og:url" content="https://henryprzygocki.github.io/Alif/">
+<meta property="og:image" content="https://henryprzygocki.github.io/Alif/img/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
@@ -20,48 +20,48 @@
 <link rel="apple-touch-icon" href="img/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Huruf">
+<meta name="apple-mobile-web-app-title" content="Alif">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&family=Literata:opsz,wght@7..72,500;7..72,600&family=Amiri+Quran&family=Scheherazade+New:wght@400;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap">
-<link rel="stylesheet" href="css/app.css?v=20261104125216">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%230F2C26'/%3E%3Ctext x='32' y='46' font-size='38' text-anchor='middle' fill='%23F2E6C6' font-family='serif'%3E%D8%AD%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/app.css?v=20261104125904">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
 </head>
 <body>
 <div class="app">
   <nav class="rail" aria-label="Main">
     <a class="brand" href="#today">
-      <span class="mark" aria-hidden="true">حُ</span>
-      <span><b>Huruf</b><span>Road to Ramadan</span></span>
+      <span class="mark" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M56.4 66.9Q56.4 68.9 55.7 71.7Q55.1 74.6 54.2 77.5Q53.2 80.3 52.4 82.2Q51.5 84.1 51.1 84.1Q50.5 84.1 49.7 83.8Q48.9 83.4 48.9 83Q48.9 82.6 49.5 80.8Q50 79 50 74.7Q50 72.8 49.5 69.2Q49 65.5 48.3 60.9Q47.6 56.2 46.8 51.4Q46 46.5 45.2 42.2Q44.5 37.9 44.1 34.9Q43.6 31.8 43.6 30.9Q43.6 28.9 44.7 25.9Q45.7 22.9 47.4 20.1Q49.1 17.3 51 15.9Q51.6 16.9 51.9 18.3Q52.2 19.7 52.2 20.7V25.4Z"/></svg></span>
+      <span><b>Alif</b><span>Road to Ramadan</span></span>
     </a>
     <div class="nav" id="nav"></div>
     <div class="rail-foot" id="rail-foot"></div>
   </nav>
   <header class="phone-head">
-    <a class="brand" href="#today"><span class="mark" aria-hidden="true">حُ</span><b>Huruf</b></a>
+    <a class="brand" href="#today"><span class="mark" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M56.4 66.9Q56.4 68.9 55.7 71.7Q55.1 74.6 54.2 77.5Q53.2 80.3 52.4 82.2Q51.5 84.1 51.1 84.1Q50.5 84.1 49.7 83.8Q48.9 83.4 48.9 83Q48.9 82.6 49.5 80.8Q50 79 50 74.7Q50 72.8 49.5 69.2Q49 65.5 48.3 60.9Q47.6 56.2 46.8 51.4Q46 46.5 45.2 42.2Q44.5 37.9 44.1 34.9Q43.6 31.8 43.6 30.9Q43.6 28.9 44.7 25.9Q45.7 22.9 47.4 20.1Q49.1 17.3 51 15.9Q51.6 16.9 51.9 18.3Q52.2 19.7 52.2 20.7V25.4Z"/></svg></span><b>Alif</b></a>
     <a class="phone-count" id="phone-count" href="#today"></a>
   </header>
   <main class="view" id="view"></main>
 </div>
 <div class="tooltip" id="tooltip"></div>
 
-<script>window.HURUF_VERSION = "20261104125216";</script>
-<script src="js/core.js?v=20261104125216"></script>
-<script src="js/data.js?v=20261104125216"></script>
-<script src="js/store.js?v=20261104125216"></script>
-<script src="js/ramadan.js?v=20261104125216"></script>
-<script src="js/translit.js?v=20261104125216"></script>
-<script src="js/quran-translit.js?v=20261104125216"></script>
-<script src="js/quran.js?v=20261104125216"></script>
-<script src="js/voice.js?v=20261104125216"></script>
-<script src="js/views/today.js?v=20261104125216"></script>
-<script src="js/views/practice.js?v=20261104125216"></script>
-<script src="js/views/letters.js?v=20261104125216"></script>
-<script src="js/views/keyboard.js?v=20261104125216"></script>
-<script src="js/views/progress.js?v=20261104125216"></script>
-<script src="js/views/setup.js?v=20261104125216"></script>
-<script src="js/views/surahs.js?v=20261104125216"></script>
-<script src="js/app.js?v=20261104125216"></script>
+<script>window.APP_VERSION = "20261104125904";</script>
+<script src="js/core.js?v=20261104125904"></script>
+<script src="js/data.js?v=20261104125904"></script>
+<script src="js/store.js?v=20261104125904"></script>
+<script src="js/ramadan.js?v=20261104125904"></script>
+<script src="js/translit.js?v=20261104125904"></script>
+<script src="js/quran-translit.js?v=20261104125904"></script>
+<script src="js/quran.js?v=20261104125904"></script>
+<script src="js/voice.js?v=20261104125904"></script>
+<script src="js/views/today.js?v=20261104125904"></script>
+<script src="js/views/practice.js?v=20261104125904"></script>
+<script src="js/views/letters.js?v=20261104125904"></script>
+<script src="js/views/keyboard.js?v=20261104125904"></script>
+<script src="js/views/progress.js?v=20261104125904"></script>
+<script src="js/views/setup.js?v=20261104125904"></script>
+<script src="js/views/surahs.js?v=20261104125904"></script>
+<script src="js/app.js?v=20261104125904"></script>
 </body>
 </html>

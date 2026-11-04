@@ -1,4 +1,4 @@
-/* Huruf — Keyboard: type Arabic with Latin keys (Lexilogos Quranic layout), switch mushaf fonts. */
+/* Alif — Keyboard: type Arabic with Latin keys (Lexilogos Quranic layout), switch mushaf fonts. */
 (function (Q) {
   'use strict';
   const { h } = Q;
@@ -12,7 +12,7 @@
     { title: 'Add dots', note: "Type ' after the letter", rows: [["t'", 'ث'], ["H'", 'خ'], ["d'", 'ذ'], ["s'", 'ش'], ["g'", 'غ'], ["h'", 'ة']] },
     { title: 'Vowel marks', note: 'Type after the letter', rows: [['=a', 'بَ'], ['=i', 'بِ'], ['=u', 'بُ'], ['=o', 'بْ'], ['=w', 'بّ'], ['==a', 'بً'], ['==i', 'بٍ'], ['==u', 'بٌ']] },
     { title: 'Hamza', note: '', rows: [['-', 'ء'], ['-a', 'أ'], ['a--', 'إ'], ['y--', 'ئ'], ['w--', 'ؤ'], ['aa', 'آ'], ['--a', 'ءا'], ['Y', 'ى']] },
-    { title: 'Huruf extras', note: 'Not on Lexilogos', rows: [["a'", 'ٱ'], ['=A', 'بٰ'], ['=~', 'آ'], ['1=', '١'], [',=', '،'], ['?=', '؟']] },
+    { title: 'Extras', note: 'Not on Lexilogos', rows: [["a'", 'ٱ'], ['=A', 'بٰ'], ['=~', 'آ'], ['1=', '١'], [',=', '،'], ['?=', '؟']] },
   ];
 
   const SPECIAL_KEYS = [['أ', '-a'], ['إ', 'a--'], ['آ', 'aa'], ['ٱ', "a'"], ['ئ', 'y--'], ['ؤ', 'w--'], ['ة', "h'"], ['ى', 'Y']];

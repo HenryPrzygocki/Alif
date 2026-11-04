@@ -1,4 +1,4 @@
-/* Huruf — small helpers shared by every view. */
+/* Alif — small helpers shared by every view. */
 (function (Q) {
   'use strict';
 
@@ -137,7 +137,7 @@
   };
 
   /* Version stamp (tools/stamp.py): added to data URLs so updates are never stuck in the cache */
-  Q.VERSION = window.HURUF_VERSION || '';
+  Q.VERSION = window.APP_VERSION || '';
   Q.asset = path => path + (Q.VERSION ? (path.includes('?') ? '&' : '?') + 'v=' + Q.VERSION : '');
 
   /* Arabic font helpers */

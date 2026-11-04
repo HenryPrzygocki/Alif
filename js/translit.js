@@ -1,11 +1,11 @@
-/* Huruf — Latin → Arabic typing, following the Lexilogos "Quranic Arabic" keyboard.
+/* Alif — Latin → Arabic typing, following the Lexilogos "Quranic Arabic" keyboard.
    https://www.lexilogos.com/keyboard/arabic_quranic.htm
    Conversion happens as you type: "t" becomes ت, and a following ' turns it into ث. */
 (function (Q) {
   'use strict';
   const M = Q.MARK;
 
-  // [latin keys, arabic output, extra?]  extra = added by Huruf, not on Lexilogos
+  // [latin keys, arabic output, extra?]  extra = added here, not on Lexilogos
   const RULES = [
     ['a', 'ا'], ['b', 'ب'], ['t', 'ت'], ["t'", 'ث'], ['j', 'ج'], ['H', 'ح'], ["H'", 'خ'],
     ['d', 'د'], ["d'", 'ذ'], ['r', 'ر'], ['z', 'ز'], ['s', 'س'], ["s'", 'ش'],

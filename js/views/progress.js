@@ -1,4 +1,4 @@
-/* Huruf — Progress: where you are strong, where you slip, and how steady you have been. */
+/* Alif — Progress: where you are strong, where you slip, and how steady you have been. */
 (function (Q) {
   'use strict';
   const { h, s } = Q;

@@ -1,4 +1,4 @@
-/* Huruf — Quran data and recitation audio.
+/* Alif — Quran data and recitation audio.
    Text and translations ship with the site (data/quran). Audio streams from public Quran CDNs:
    per-verse files from Quran.com (with word timings, when its API answers) or EveryAyah. */
 (function (Q) {

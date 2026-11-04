@@ -1,4 +1,4 @@
-/* Huruf — Practice.
+/* Alif — Practice.
    Read-aloud modes: you say it, reveal, and mark what you missed.
    Quiz modes: you pick an answer and the site checks it. */
 (function (Q) {

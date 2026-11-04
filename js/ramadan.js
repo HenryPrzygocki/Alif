@@ -1,4 +1,4 @@
-/* Huruf — when does Ramadan start?
+/* Alif — when does Ramadan start?
    An Islamic day begins at sunset, so Ramadan "starts" the evening before the first fast:
    that night is the first taraweeh. Known dates are looked up; later years fall back to the
    browser's Umm al-Qura calendar. Setup keeps an optional override for local moon sighting. */

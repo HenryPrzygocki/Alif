@@ -1,8 +1,8 @@
-# Huruf
+# Alif
 
 Learn to read the Quran from zero: the Arabic letters first, then short surahs by ear and by heart. Made for new Muslims. It follows the six-book **Iqra** method for the alphabet (optional) and counts down to Ramadan.
 
-**Open it:** <https://henryprzygocki.github.io/Learn-Arabic/>. Free, no account. Works on a computer or a phone (add it to your home screen and it opens like an app).
+**Open it:** <https://henryprzygocki.github.io/Alif/>. Free, no account. Works on a computer or a phone (add it to your home screen and it opens like an app).
 
 ## What's in it
 

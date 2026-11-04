@@ -1,4 +1,4 @@
-/* Huruf — Setup: your Iqra book, Ramadan date, goal, font, theme, and backups. */
+/* Alif — Setup: your Iqra book, Ramadan date, goal, font, theme, and backups. */
 (function (Q) {
   'use strict';
   const { h } = Q;
@@ -48,7 +48,7 @@
 
     const exportBtn = h('button', { class: 'btn', type: 'button', onclick: () => {
       const blob = new Blob([Q.store.exportJSON()], { type: 'application/json' });
-      const a = h('a', { href: URL.createObjectURL(blob), download: `huruf-backup-${Q.dayKey()}.json` });
+      const a = h('a', { href: URL.createObjectURL(blob), download: `alif-backup-${Q.dayKey()}.json` });
       document.body.append(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     } }, 'Download backup');

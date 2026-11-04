@@ -1,4 +1,4 @@
-/* Huruf — Surahs: memorize short surahs by ear and by heart.
+/* Alif — Surahs: memorize short surahs by ear and by heart.
    #surahs        library: your surahs, where to start, all surahs
    #surah-112     one surah: 1 Listen · 2 Learn · 3 Test
    #review        verses due today, from every surah you are learning */

@@ -1,8 +1,9 @@
-/* Huruf — saved progress and the stats derived from it.
+/* Alif — saved progress and the stats derived from it.
    Everything is stored in this browser (localStorage). Use Setup → Export to back it up. */
 (function (Q) {
   'use strict';
 
+  // The site was first called Huruf. The storage keys keep that name so saved progress carries over.
   const KEY = 'huruf.v1';
   const HIST_LEN = 12;      // how many recent attempts per letter feed "mastery"
 
@@ -321,7 +322,7 @@
     exportJSON() { return JSON.stringify(S, null, 1); },
     importJSON(text) {
       const data = JSON.parse(text);
-      if (!data || typeof data !== 'object' || !data.v) throw new Error('This file is not a Huruf backup.');
+      if (!data || typeof data !== 'object' || !data.v) throw new Error('This file is not an Alif backup.');
       S = merge(fresh(), data);
       store.save(true);
     },

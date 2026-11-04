@@ -1,4 +1,4 @@
-/* Huruf — transliteration of Quranic (Uthmani / Madani) text, word by word, for reciting.
+/* Alif — transliteration of Quranic (Uthmani / Madani) text, word by word, for reciting.
    It reads the way a verse is recited: hamzat al-waṣl is silent mid-verse, sun letters merge
    (ar-raḥmān), shadda doubles, noon and tanween merge or turn to m (iqlab), and each verse
    ends with a stop (waqf): aḥadun → aḥad, ḥāmiyatun → ḥāmiyah, turāban → turābā.

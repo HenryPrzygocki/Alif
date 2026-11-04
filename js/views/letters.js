@@ -1,4 +1,4 @@
-/* Huruf — Letters: the alphabet by shape family, plus the vowel marks. */
+/* Alif — Letters: the alphabet by shape family, plus the vowel marks. */
 (function (Q) {
   'use strict';
   const { h } = Q;

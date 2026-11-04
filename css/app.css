@@ -1,4 +1,4 @@
-/* Huruf — styles
+/* Alif — styles
    Layout: a deep-green "mushaf cover" rail on the left, a pale working desk on the right,
    and a double-ruled reading frame (like a mushaf page border) wherever Arabic is read. */
 
@@ -133,9 +133,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
   font-family: 'Uthmanic Hafs', 'Amiri Quran', serif; font-size: 30px; line-height: 1;
   width: 46px; height: 46px; display: grid; place-items: center; border-radius: 50%;
   border: 1px solid color-mix(in srgb, var(--frame) 70%, transparent); color: var(--rail-gold);
-  padding-top: 4px;
 }
-.brand b { font-family: var(--f-display); font-size: 19px; font-weight: 600; display: block; letter-spacing: .01em; }
+.brand .mark svg { width: 80%; height: 80%; fill: currentColor; }
+.brand b { font-family: var(--f-display); font-size: 19px; font-weight: 600; display: block; letter-spacing: .01em; color: var(--rail-ink); }
 .brand span { font-size: 12px; color: var(--rail-muted); }
 .nav { display: flex; flex-direction: column; gap: 2px; }
 .nav a {

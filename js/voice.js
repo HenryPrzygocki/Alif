@@ -1,4 +1,4 @@
-/* Huruf — hearing individual letters.
+/* Alif — hearing individual letters.
 
    SWITCHED OFF for now: there is no good recording of each letter on its own yet.
    While it is off, no "Hear" buttons or recording tools appear anywhere.

@@ -1,4 +1,4 @@
-/* Huruf — content data.
+/* Alif — content data.
    Everything the app teaches lives here, so new modules mostly mean new data. */
 (function (Q) {
   'use strict';
