@@ -8,12 +8,12 @@
 
   /* Navigation, in three groups so each part of the site is one click away */
   const ROUTES = [
-    { id: 'today', label: 'Today', view: () => Q.views.today, icon: ['M4 11l8-7 8 7', 'M6 9.5V20h12V9.5', 'M10 20v-5h4v5'] },
+    { id: 'today', label: 'Today', primary: true, view: () => Q.views.today, icon: ['M4 11l8-7 8 7', 'M6 9.5V20h12V9.5', 'M10 20v-5h4v5'] },
     { group: 'Quran' },
-    { id: 'surahs', label: 'Surahs', view: () => Q.views.surahs, icon: ['M5 4.5h9.5a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z', 'M8.5 9h6M8.5 12.5h6M8.5 16h3.5'] },
-    { id: 'review', label: 'Review', view: () => Q.views.review, icon: ['M20 12a8 8 0 1 1-2.6-5.9', 'M20 4v4.5h-4.5', 'M9 12.5l2.2 2.2L15.5 10'], badge: () => Q.store.qDue().length },
+    { id: 'surahs', label: 'Surahs', primary: true, view: () => Q.views.surahs, icon: ['M5 4.5h9.5a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z', 'M8.5 9h6M8.5 12.5h6M8.5 16h3.5'] },
+    { id: 'review', label: 'Review', primary: true, view: () => Q.views.review, icon: ['M20 12a8 8 0 1 1-2.6-5.9', 'M20 4v4.5h-4.5', 'M9 12.5l2.2 2.2L15.5 10'], badge: () => Q.store.qDue().length },
     { group: 'Alphabet' },
-    { id: 'practice', label: 'Letter practice', view: () => Q.views.practice, icon: ['M8 5.5v13l11-6.5z'] },
+    { id: 'practice', label: 'Letter practice', short: 'Practice', primary: true, view: () => Q.views.practice, icon: ['M8 5.5v13l11-6.5z'] },
     { id: 'letters', label: 'Letters', view: () => Q.views.letters, icon: ['M4 5h7v6H4z', 'M13 5h7v6h-7z', 'M4 13h7v6H4z', 'M13 13h7v6h-7z'] },
     { id: 'keyboard', label: 'Keyboard', view: () => Q.views.keyboard, icon: ['M3 7h18v11H3z', 'M7 11h.01M11 11h.01M15 11h.01M7 14.5h10'] },
     { group: 'You' },
@@ -26,17 +26,39 @@
   ];
 
   const nav = Q.$('#nav');
+  const MORE_ICON = ['M4 7h16', 'M4 12h16', 'M4 17h16'];
+  /* On phones the rail becomes a bottom bar with the main pages; the rest sit under "More". */
   function drawNav() {
+    const secondary = ROUTES.some(r => r.id === currentId && !r.primary);
     nav.replaceChildren(...ROUTES.map(r => r.group
       ? h('div', { class: 'nav-group' }, r.group)
-      : h('a', { href: '#' + r.id, 'data-route': r.id }, icon(r.icon), h('span', null, r.label),
-        r.badge && r.badge() ? h('span', { class: 'nav-badge', title: 'Due today' }, r.badge()) : null)));
+      : h('a', { href: '#' + r.id, 'data-route': r.id, class: (r.primary ? 'primary' : 'secondary') + (r.short ? ' has-short' : '') },
+        icon(r.icon), h('span', { class: 'lbl' }, r.label), r.short ? h('span', { class: 'lbl-short' }, r.short) : null,
+        r.badge && r.badge() ? h('span', { class: 'nav-badge', title: 'Due today' }, r.badge()) : null)),
+    h('button', { type: 'button', class: 'nav-more', 'aria-expanded': String(!sheet.hidden), 'aria-controls': 'more-sheet', 'aria-current': secondary ? 'page' : null, onclick: () => (sheet.hidden ? openSheet() : closeSheet()) },
+      icon(MORE_ICON), h('span', null, 'More')));
   }
+  const sheet = h('div', { id: 'more-sheet', class: 'more-sheet', hidden: true });
+  document.body.append(sheet);
+  function openSheet() {
+    const r = Q.ramadan();
+    sheet.replaceChildren(
+      h('div', { class: 'more-backdrop', onclick: closeSheet }),
+      h('div', { class: 'more-panel', role: 'dialog', 'aria-label': 'More pages' },
+        h('div', { class: 'more-links' }, ROUTES.filter(x => x.id && !x.primary).map(x =>
+          h('a', { href: '#' + x.id, 'aria-current': x.id === currentId ? 'page' : null, onclick: closeSheet }, icon(x.icon), h('span', null, x.label)))),
+        h('p', { class: 'more-foot' }, r.phase === 'during' ? `Day ${r.dayOf} of Ramadan` : r.phase === 'tonight' ? 'Ramadan begins tonight at sunset' : `${r.days} days until Ramadan · ${Q.fmtDate(r.night, { weekday: 'short', month: 'short', day: 'numeric' })}`)));
+    sheet.hidden = false;
+    Q.refreshNav();
+  }
+  function closeSheet() { if (sheet.hidden) return; sheet.hidden = true; Q.refreshNav(); }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+  let currentId = null;
   drawNav();
 
   let cleanup = null;
-  let currentId = null;
   function render() {
+    closeSheet();
     const id = (location.hash || '').replace(/^#/, '') || 'today';
     let route = ROUTES.find(r => r.id === id && !r.group);
     let viewFn, navId, title;
@@ -72,6 +94,8 @@
   function railFoot() {
     const r = Q.ramadan();
     const foot = Q.$('#rail-foot');
+    const head = Q.$('#phone-count');
+    if (head) head.textContent = r.phase === 'during' ? `Day ${r.dayOf} of Ramadan` : r.phase === 'tonight' ? 'Ramadan tonight' : `${r.days} ${r.days === 1 ? 'day' : 'days'} to Ramadan`;
     foot.replaceChildren(...(
       r.phase === 'during'
         ? [h('div', { class: 'big' }, 'Day ' + r.dayOf), h('div', { class: 'small' }, 'of Ramadan. Ramadan Mubarak')]

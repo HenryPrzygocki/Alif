@@ -35,7 +35,7 @@
   Q.views.today = function (root) {
     const st = Q.store.state;
     const r = Q.ramadan();
-    const book = st.settings.iqraBook || 1;
+    const book = st.settings.iqraBook === 0 ? 0 : (st.settings.iqraBook || 1);   // 0 = not using Iqra
     const today = Q.store.today();
     const streak = Q.store.streak();
     const goal = st.settings.goal || 150;
@@ -48,7 +48,7 @@
       h('a', { class: 'btn primary lg', href: '#practice' }, 'Start practice'));
 
     /* countdown */
-    const booksLeft = 6 - book + 1;
+    const booksLeft = book ? 6 - book + 1 : 0;
     const perBook = r.days > 0 ? Math.floor(r.days / booksLeft) : 0;
     const fmtLong = d => Q.fmtDate(d, { weekday: 'long', month: 'long', day: 'numeric' });
     const shown = r.phase === 'during' ? r.dayOf : r.days;
@@ -63,7 +63,9 @@
         h('h2', null, `${r.days === 1 ? 'Day' : 'Days'} until Ramadan${r.year ? ' ' + r.year : ''}`),
         h('p', { class: 'sub' }, `Begins at sunset on ${fmtLong(r.night)}, ${r.night.getFullYear()}: the first taraweeh. First fast ${fmtLong(r.fast)}.`,
           r.source === 'custom' ? ' (Your own date from Setup.)' : ' Expected date; your mosque confirms it after the moon sighting.'),
-        h('p', { class: 'sub' }, `That is about ${Math.round(r.days / 7)} weeks. With ${booksLeft} Iqra ${booksLeft === 1 ? 'book' : 'books'} to go, aim for roughly `, h('b', null, `${perBook} days per book`), '.'),
+        book
+          ? h('p', { class: 'sub' }, `That is about ${Math.round(r.days / 7)} weeks. With ${booksLeft} Iqra ${booksLeft === 1 ? 'book' : 'books'} to go, aim for roughly `, h('b', null, `${perBook} days per book`), '.')
+          : h('p', { class: 'sub' }, `That is about ${Math.round(r.days / 7)} weeks. Ten minutes a day from now is over `, h('b', null, `${Math.round(r.days * 10 / 60)} hours`), ' of practice by then.'),
       ];
     }
     const countdown = h('section', { class: 'card countdown' },
@@ -95,8 +97,8 @@
       },
         h('span', { class: 'bn' }, (b.n < book ? '✓ ' : '') + 'Iqra ' + b.n),
         h('span', { class: 'bt' }, b.title))));
-    const cur = Q.IQRA[book - 1];
-    const iqra = h('section', { class: 'card stack' },
+    const cur = Q.IQRA[Math.max(1, book) - 1];
+    const iqra = !book ? null : h('section', { class: 'card stack' },
       h('div', { class: 'card-head' },
         h('h2', null, 'Your Iqra path'),
         h('span', { class: 'small muted' }, 'Click the book you are on with your teacher')),
@@ -126,7 +128,7 @@
         : h('p', { class: 'empty' }, 'Do a few rounds of practice and the letters you miss most will show up here.'));
 
     /* quick start */
-    const rec = PRESETS.find(p => p.book === Math.min(book, 4));
+    const rec = PRESETS.find(p => p.book === Math.min(book || 1, 4));
     const quick = h('section', { class: 'card' },
       h('div', { class: 'card-head' }, h('h2', null, 'Quick start')),
       h('div', { class: 'quick' }, PRESETS.map(p =>
@@ -164,11 +166,38 @@
 
     root.append(h('div', { class: 'page' },
       head,
+      welcomeCard(),
       h('div', { class: 'split' }, countdown, todayCard),
       h('div', { class: 'split' }, quranCard, weakCard),
       quick,
       iqra));
   };
+  /* First visit: what this is, where to begin, and where progress is kept. Goes away once dismissed. */
+  function welcomeCard() {
+    const st = Q.store.state;
+    if (st.settings.welcomed) return null;
+    const started = Q.store.totals().n > 0 || st.quran.list.length > 0 || Object.keys(st.quran.v).length > 0;
+    if (started) return null;
+    const close = () => { Q.store.setSetting('welcomed', true); card.remove(); };
+    const step = (n, title, text, link, label) => h('div', { class: 'welcome-step' },
+      h('span', { class: 'welcome-n' }, n),
+      h('div', { class: 'stack', style: { gap: '4px' } }, h('b', null, title), h('p', { class: 'small' }, Q.mixed(text)),
+        link ? h('a', { class: 'btn sm' + (n === 1 ? ' primary' : ''), href: link, onclick: () => Q.store.setSetting('welcomed', true) }, label) : null));
+    const card = h('section', { class: 'card welcome' },
+      h('div', { class: 'card-head' },
+        h('div', null, h('div', { class: 'eyebrow' }, 'Welcome'), h('h2', null, 'Learn to read the Quran, one letter at a time')),
+        h('button', { class: 'btn ghost sm', type: 'button', onclick: close }, 'Got it, hide this')),
+      h('p', { style: { color: 'var(--ink-2)', maxWidth: '72ch' } },
+        'Made for new Muslims and anyone starting from zero: the Arabic letters first, then short surahs by ear and by heart, with Ramadan as the finish line. It follows the Iqra method, and works alongside a teacher or on its own.'),
+      h('div', { class: 'welcome-steps' },
+        step(1, 'Learn the letters', 'See a letter, say its sound out loud, then check yourself. Quizzes are marked for you.', '#practice', 'Start with the letters'),
+        step(2, 'Listen to Al-Fātiḥah', 'Hear Sheikh al-Ḥuṣarī recite it word by word while you follow the spelling and the meaning.', '#surah-1', 'Open Al-Fātiḥah'),
+        step(3, 'Come back each day', 'Ten minutes is enough. The site keeps your streak, shows your weak letters and brings verses back for review.', null)),
+      h('div', { class: 'welcome-foot' },
+        h('p', { class: 'small muted' }, 'No account and no sign-up. Your progress is saved in this browser, on this device. Setup has a backup button if you switch phones.'),
+        h('div', { class: 'row', style: { gap: '8px' } }, h('span', { class: 'small muted' }, 'Spelling'), Q.schemeSwitch())));
+    return card;
+  }
   function segBarMini(sum) {
     return h('div', { class: 'qbar' }, h('i', { class: 'mem', style: { width: (sum.mem / sum.count * 100) + '%' } }), h('i', { class: 'lrn', style: { width: (sum.learning / sum.count * 100) + '%' } }));
   }

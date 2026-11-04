@@ -915,7 +915,8 @@
         h('div', { class: 'page-head' }, h('div', null,
           h('h1', null, 'Review'),
           h('p', null, 'Verses come back after a day, then 3 days, a week, two weeks, a month. Say each one from memory, reveal it, and grade yourself honestly. Missed ones come back sooner.'))),
-        h('div', { class: 'card qdisplay' }, displayBar(() => { if (session) session.redraw(); else render(index); })),
+        h('details', { class: 'qdisplay-details', open: window.innerWidth > 760 }, h('summary', null, 'Display settings'),
+          h('div', { class: 'card qdisplay' }, displayBar(() => { if (session) session.redraw(); else render(index); }))),
         body));
       if (!due.length) {
         body.append(h('div', { class: 'frame lstage' }, h('div', { class: 'summary' },

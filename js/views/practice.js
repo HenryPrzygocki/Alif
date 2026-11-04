@@ -313,11 +313,13 @@
 
     /* ---------------- rendering ---------------- */
     function glyphSize(n) {
-      if (cfg.mode === 'joined') return cfg.words <= 2 ? '96px' : '76px';
+      // the size the desktop stage wants, capped so a whole row fits across a phone screen
+      const fit = (px, across) => `min(${px}px, calc((100vw - 96px) / ${across}))`;
+      if (cfg.mode === 'joined') return cfg.words <= 2 ? fit(96, 2.6) : fit(76, 3.2);
       if (n <= 1) return '150px';
-      if (n <= 3) return '112px';
-      if (n <= 5) return '90px';
-      return '72px';
+      if (n <= 3) return fit(112, n * 1.35);
+      if (n <= 5) return fit(90, n * 1.35);
+      return fit(72, Math.min(n, 6) * 1.35);
     }
 
     function optionsButton() {

@@ -27,6 +27,13 @@
     }
   }
 
+  /* append()/replaceChildren() turn null into the text "null". Views often pass
+     `cond ? h(...) : null`, so drop empty values instead of printing them. */
+  ['append', 'prepend', 'replaceChildren'].forEach(fn => {
+    const orig = Element.prototype[fn];
+    Element.prototype[fn] = function (...kids) { return orig.apply(this, kids.filter(k => k != null && k !== false)); };
+  });
+
   /* SVG element builder */
   Q.s = function s(tag, attrs, ...kids) {
     const el = document.createElementNS('http://www.w3.org/2000/svg', tag);

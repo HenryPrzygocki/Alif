@@ -14,7 +14,8 @@
 
     /* learning */
     const book = h('select', { id: 'set-book', class: 'input', onchange: e => { Q.store.setSetting('iqraBook', Number(e.target.value)); } },
-      Q.IQRA.map(b => h('option', { value: b.n, selected: b.n === set.iqraBook }, `Iqra ${b.n} · ${b.title}`)));
+      Q.IQRA.map(b => h('option', { value: b.n, selected: b.n === set.iqraBook }, `Iqra ${b.n} · ${b.title}`)),
+      h('option', { value: 0, selected: set.iqraBook === 0 }, 'Not using Iqra (hide the Iqra path)'));
     const page = h('input', { id: 'set-page', class: 'input', type: 'text', value: set.iqraPage || '', placeholder: 'e.g. page 14', oninput: e => Q.store.setSetting('iqraPage', e.target.value) });
     const goal = h('input', { id: 'set-goal', class: 'input num', type: 'number', min: 20, max: 2000, step: 10, value: set.goal, onchange: e => { const v = Math.max(20, Math.min(2000, Number(e.target.value) || 150)); e.target.value = v; Q.store.setSetting('goal', v); } });
     const ram = h('input', { id: 'set-ramadan', class: 'input', type: 'date', value: set.ramadan || '', onchange: e => { Q.store.setSetting('ramadan', e.target.value); Q.toast(e.target.value ? 'Ramadan date saved' : 'Using the calendar date'); } });
@@ -72,7 +73,7 @@
       h('section', { class: 'card stack' },
         h('h2', null, 'Your data'),
         h('p', { class: 'small', style: { color: 'var(--ink-2)', maxWidth: '70ch' } },
-          'Your progress lives only in this browser on this computer. Download a backup now and then, and use it to move your progress to another device or browser.'),
+          'Your progress lives only in this browser on this device. Download a backup now and then, and use it to move your progress to another device or browser.'),
         h('div', { class: 'row' }, exportBtn, h('button', { class: 'btn', type: 'button', onclick: () => fileIn.click() }, 'Restore from backup'), fileIn, resetBtn),
         h('p', { class: 'small muted' }, `${Object.keys(st.days).length} days and ${Q.fmtInt(Q.store.totals().n)} reads saved.`)),
       h('p', { class: 'small muted' }, 'Version ' + (Q.VERSION ? Q.VERSION.replace(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2}).*/, '$1-$2-$3 $4:$5 UTC') : 'local'),

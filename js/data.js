@@ -176,10 +176,10 @@
   };
 
   Q.SCHEMES = [
-    { id: 'pt', label: 'Português (Brasil)', short: 'PT', example: 'só · chá · rhó' },
     { id: 'en', label: 'English', short: 'EN', example: 'ṣa · sha · kha' },
+    { id: 'pt', label: 'Português (Brasil)', short: 'PT', example: 'só · chá · rhó' },
   ];
-  Q.SCHEME = 'pt';
+  Q.SCHEME = 'en';
 
   /* Sound of one letter + vowel in the current scheme */
   Q.sound = function (letterId, vowelId) {

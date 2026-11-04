@@ -55,7 +55,7 @@
       const hearEl = Q.letterAudioOn() ? h('div', { class: 'stack', style: { gap: '8px' } }, h('div', { class: 'eyebrow' }, 'Hear it')) : null;
       currentHearEl = hearEl;
       if (hearEl) fillHear(hearEl, selected);
-      detailEl.replaceChildren(
+      detailEl.replaceChildren(...[
         h('div', { class: 'hero' },
           h('span', { class: 'ar' }, l.ch),
           h('div', { class: 'stack', style: { gap: '6px' } },
@@ -80,7 +80,7 @@
             ? h('p', { class: 'small' }, `${rec.n} reads · ${Q.pct(1 - rec.w / rec.n)} right · `, h('b', null, Q.store.LEVELS[Q.store.level(selected)]))
             : h('p', { class: 'small muted' }, 'Not practised yet.')),
         h('button', { class: 'btn', type: 'button', onclick: () => { Q.practiceOnly = [selected, ...like.map(o => o.id)].filter(id => Q.L[id]); const cur = Q.MODE[Q.store.state.practice.mode]; if (Q.L[selected].noSound && cur && cur.sound) Q.store.setPractice('mode', 'names'); Q.go('practice'); } },
-          'Practise ' + l.name + ' and its look-alikes'));
+          'Practise ' + l.name + ' and its look-alikes')].filter(Boolean));
     }
 
     /* Hear the letter (only when letter audio is switched on, see js/voice.js) */
@@ -117,7 +117,7 @@
         const recording = recorder && recorder.recording;
         recCard.replaceChildren(
           h('div', { class: 'card-head' }, h('h2', null, 'Record your teacher'), h('span', { class: 'small muted' }, `${done} of ${L.length} recorded`)),
-          h('p', { class: 'small', style: { color: 'var(--ink-2)', maxWidth: '70ch' } }, 'In your next lesson, ask your teacher to say each one while you record. Their voice then plays everywhere you press ▶ Hear. Recordings stay in this browser on this computer (they are not part of the backup file).'),
+          h('p', { class: 'small', style: { color: 'var(--ink-2)', maxWidth: '70ch' } }, 'In your next lesson, ask your teacher to say each one while you record. Their voice then plays everywhere you press ▶ Hear. Recordings stay in this browser on this device (they are not part of the backup file).'),
           h('div', { class: 'seg' }, KINDS.map(k => h('button', { type: 'button', 'aria-pressed': String(kind === k.id), onclick: () => { kind = k.id; draw(); } }, k.label))),
           h('div', { class: 'rec-stage' },
             h('button', { class: 'btn ghost', type: 'button', 'aria-label': 'Previous', onclick: () => { idx--; draw(); } }, '←'),
