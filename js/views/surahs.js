@@ -218,7 +218,7 @@
         h('button', { type: 'button', 'aria-pressed': String(sort === val), onclick: e => { sort = val; Q.storage.set('huruf.surahSort', val); sortSeg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === e.currentTarget))); renderRows(); } }, label)));
       renderRows();
 
-      root.replaceChildren(h('div', { class: 'page' },
+      root.replaceChildren(h('div', { class: 'page quran-page' },
         h('div', { class: 'page-head' }, h('div', null,
           h('h1', null, 'Surahs'),
           h('p', null, 'Memorize short surahs by ear and by heart. Listen to Al-Ḥuṣarī, learn one verse at a time, then test yourself. Verses you learn come back for review on a schedule, so they stick.'))),
@@ -250,7 +250,7 @@
       const bar = h('div', { class: 'card qdisplay' });
       const body = h('div', { class: 'qbody' });
       const barWrap = h('details', { class: 'qdisplay-details', open: window.innerWidth > 760 }, h('summary', null, 'Display and audio settings'), bar);
-      root.replaceChildren(h('div', { class: 'page' }, head, tabsEl, barWrap, body));
+      root.replaceChildren(h('div', { class: 'page quran-page' }, head, tabsEl, barWrap, body));
 
       function renderHead() {
         const sum = store().qSummary(n, count);
@@ -911,7 +911,7 @@
       const body = h('div', { class: 'qbody' });
       const groups = {};
       due.forEach(k => { const s = Number(k.split(':')[0]); (groups[s] = groups[s] || []).push(k); });
-      root.replaceChildren(h('div', { class: 'page' },
+      root.replaceChildren(h('div', { class: 'page quran-page' },
         h('div', { class: 'page-head' }, h('div', null,
           h('h1', null, 'Review'),
           h('p', null, 'Verses come back after a day, then 3 days, a week, two weeks, a month. Say each one from memory, reveal it, and grade yourself honestly. Missed ones come back sooner.'))),

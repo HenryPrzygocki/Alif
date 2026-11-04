@@ -142,4 +142,6 @@
 
   /* Arabic font helpers */
   Q.arabicFontCss = id => (Q.FONT[id] || Q.FONT.hafs).css;
+  // for Quran text: the mushaf as printed (Uthmani leaves the dots off a final yaa)
+  Q.quranFontCss = id => { const f = Q.FONT[id] || Q.FONT.hafs; return f.quran || f.css; };
 })(window.Q = window.Q || {});

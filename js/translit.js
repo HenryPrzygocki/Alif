@@ -21,14 +21,46 @@
     ['5=', '٥'], ['6=', '٦'], ['7=', '٧'], ['8=', '٨'], ['9=', '٩'],
     [',=', '،', true], ['?=', '؟', true],
   ];
+  /* Every Latin letter types something Arabic, so no Latin letter is ever left in the text.
+     These go beyond Lexilogos: the vowels and the letters Arabic does not have get the
+     closest Arabic letter, and capitals that mean nothing on Lexilogos type like the small letter.
+     (H S D T Z Y keep their own meaning: ح ص ض ط ظ ى.) */
+  const ALIASES = [
+    ['i', 'ي'], ['e', 'ي'], ['u', 'و'], ['o', 'و'], ['p', 'ب'], ['v', 'ف'], ['c', 'ك'], ['x', 'ش'],
+  ];
+  const SMALL = Object.fromEntries(RULES.concat(ALIASES).filter(r => /^[a-z]$/.test(r[0])).map(r => [r[0], r[1]]));
+  const TAKEN = new Set(RULES.map(r => r[0]).filter(k => /^[A-Z]$/.test(k)));
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(C => { if (!TAKEN.has(C)) ALIASES.push([C, SMALL[C.toLowerCase()]]); });
+  ALIASES.forEach(([k, out]) => RULES.push([k, out, true]));
   Q.KEY_RULES = RULES;
+  Q.KEY_ALIASES = ALIASES;
+
+  const MARK_RE = /[\u064B-\u065F\u0670\u06D6-\u06ED]/;
+  Q.isMark = ch => MARK_RE.test(ch);
+
+  /* Put a vowel mark on the letter before the caret, the way it can really be written:
+     one vowel per letter (a new one replaces the old: fatḥa, kasra, ḍamma, tanwīn, sukūn),
+     no doubled shadda or small alif, and nothing at all when there is no letter to carry it. */
+  const VOWEL_MARKS = new Set([M.fatha, M.kasra, M.damma, M.fathatan, M.kasratan, M.dammatan, M.sukun]);
+  const ARABIC_LETTER = /[\u0621-\u063A\u0641-\u064A\u0671-\u06D3]/;
+  function attach(text, mark) {
+    let i = text.length;
+    while (i > 0 && Q.isMark(text[i - 1])) i--;
+    if (!i || !ARABIC_LETTER.test(text[i - 1])) return text;
+    const marks = [...text.slice(i)].filter(m => m !== mark && !(VOWEL_MARKS.has(mark) && VOWEL_MARKS.has(m)));
+    marks.push(mark);
+    marks.sort((a, b) => (b === M.shadda) - (a === M.shadda));   // shadda first, as the mushaf stores it
+    return text.slice(0, i) + marks.join('');
+  }
 
   /* Each rule is matched against the text as it looks *while* you type it:
      "t'" is matched as "ت'", "==a" as "==a", "a--" as "اء-". */
   let compiled = [];
   function applyOnce(text) {
     for (const r of compiled) {
-      if (text.endsWith(r.form)) return text.slice(0, text.length - r.form.length) + r.out;
+      if (!text.endsWith(r.form)) continue;
+      const before = text.slice(0, text.length - r.form.length);
+      return r.mark ? attach(before, r.out) : before + r.out;
     }
     return text;
   }
@@ -40,11 +72,11 @@
   // compile in order of key length so shorter forms exist before longer ones use them
   RULES.slice().sort((a, b) => a[0].length - b[0].length).forEach(([key, out]) => {
     const form = convert(key.slice(0, -1)) + key.slice(-1);
-    compiled.push({ key, form, out });
+    compiled.push({ key, form, out, mark: out.length === 1 && Q.isMark(out) });
     compiled.sort((a, b) => b.form.length - a.form.length);
   });
 
-  Q.translit = { applyOnce, convert };
+  Q.translit = { applyOnce, convert, attach };
 
   /* Reverse lookup: Arabic character → names and keys, for the letter-by-letter view */
   const EXTRA_NAMES = {
@@ -65,9 +97,6 @@
     if (!i) return null;
     return i.letter ? Object.assign({}, i, { name: i.letter.name }) : i;
   };
-
-  const MARK_RE = /[ً-ٰٟۖ-ۭ]/;
-  Q.isMark = ch => MARK_RE.test(ch);
 
   /* Split Arabic text into clusters: a base letter plus the marks on it */
   Q.clusters = function (text) {

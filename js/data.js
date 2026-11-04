@@ -272,7 +272,7 @@
 
   /* Arabic fonts the user can switch between. */
   Q.FONTS = [
-    { id: 'hafs', label: 'Uthmani · Madani mushaf', css: "'Uthmanic Hafs', 'Amiri Quran', 'Scheherazade New', serif", note: 'The King Fahd Complex font used by Quran.com. Matches the common Madani mushaf.' },
+    { id: 'hafs', label: 'Uthmani · Madani mushaf', css: "'Uthmanic Hafs Letters', 'Uthmanic Hafs', 'Amiri Quran', 'Scheherazade New', serif", quran: "'Uthmanic Hafs', 'Amiri Quran', 'Scheherazade New', serif", note: 'The King Fahd Complex font used by Quran.com. Matches the common Madani mushaf.' },
     { id: 'indopak', label: 'Indo-Pak', css: "'IndoPak Nastaleeq', 'Scheherazade New', serif", note: 'The South Asian mushaf style, used by Quran.com\'s Indo-Pak option.' },
     { id: 'amiri', label: 'Amiri Quran', css: "'Amiri Quran', 'Scheherazade New', serif", note: 'Classic Naskh book style.' },
     { id: 'scheherazade', label: 'Scheherazade New', css: "'Scheherazade New', 'Amiri Quran', serif", note: 'Open, roomy letters. Easy for beginners.' },

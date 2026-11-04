@@ -23,7 +23,7 @@
     /* look */
     const fontPreview = h('div', { class: 'frame', style: { padding: '8px 18px', textAlign: 'center' } });
     const renderPreview = () => {
-      fontPreview.replaceChildren(h('span', { class: 'ar', style: { fontSize: '40px', lineHeight: '1.9', fontFamily: Q.arabicFontCss(set.font) } }, 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ'));
+      fontPreview.replaceChildren(h('span', { class: 'ar', style: { fontSize: '40px', lineHeight: '1.9', fontFamily: Q.quranFontCss(set.font) } }, 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ'));
     };
     const font = h('select', { id: 'set-font', class: 'input', onchange: e => { Q.store.setSetting('font', e.target.value); renderPreview(); } },
       Q.FONTS.map(f => h('option', { value: f.id, selected: f.id === set.font }, f.label)));

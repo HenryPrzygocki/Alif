@@ -13,6 +13,7 @@
     { title: 'Vowel marks', note: 'Type after the letter', rows: [['=a', 'بَ'], ['=i', 'بِ'], ['=u', 'بُ'], ['=o', 'بْ'], ['=w', 'بّ'], ['==a', 'بً'], ['==i', 'بٍ'], ['==u', 'بٌ']] },
     { title: 'Hamza', note: '', rows: [['-', 'ء'], ['-a', 'أ'], ['a--', 'إ'], ['y--', 'ئ'], ['w--', 'ؤ'], ['aa', 'آ'], ['--a', 'ءا'], ['Y', 'ى']] },
     { title: 'Extras', note: 'Not on Lexilogos', rows: [["a'", 'ٱ'], ['=A', 'بٰ'], ['=~', 'آ'], ['1=', '١'], [',=', '،'], ['?=', '؟']] },
+    { title: 'Every other letter', note: 'Never stays Latin. Capitals type like small letters, except H S D T Z Y', rows: [['i', 'ي'], ['e', 'ي'], ['u', 'و'], ['o', 'و'], ['p', 'ب'], ['v', 'ف'], ['c', 'ك'], ['x', 'ش']] },
   ];
 
   const SPECIAL_KEYS = [['أ', '-a'], ['إ', 'a--'], ['آ', 'aa'], ['ٱ', "a'"], ['ئ', 'y--'], ['ؤ', 'w--'], ['ة', "h'"], ['ى', 'Y']];
@@ -20,7 +21,7 @@
   Q.views.keyboard = function (root) {
     const st = Q.store.state;
     const settings = st.settings;
-    let on = true;
+    const on = true;   // every Latin letter always becomes Arabic
     if (!settings.kbFont) settings.kbFont = settings.font || 'hafs';
     if (!settings.kbSize) settings.kbSize = 44;
 
@@ -62,7 +63,12 @@
 
     function insert(text) {
       const a = ta.selectionStart, b = ta.selectionEnd;
-      ta.setRangeText(text, a, b, 'end');
+      if (text.length === 1 && Q.isMark(text)) {
+        // a vowel key replaces the letter's vowel instead of piling up marks
+        const before = Q.translit.attach(ta.value.slice(0, a), text);
+        ta.value = before + ta.value.slice(b);
+        ta.setSelectionRange(before.length, before.length);
+      } else ta.setRangeText(text, a, b, 'end');
       ta.focus();
       update();
     }
@@ -74,15 +80,29 @@
       update();
     }
 
+    /* Re-type the Latin run just before the caret, key by key, so whatever arrives in one go
+       (phone keyboards send whole words, autocorrect replaces them) converts the same as typing. */
+    const RAW = /[A-Za-z'=~,?0-9-]+$/;
+    function retype(before) {
+      const m = before.match(RAW);
+      if (!m) return before;
+      let base = before.slice(0, before.length - m[0].length);
+      for (const ch of m[0]) base = Q.translit.applyOnce(base + ch);
+      return base;
+    }
+    function convertAtCaret(oneKey) {
+      const pos = ta.selectionStart;
+      const before = ta.value.slice(0, pos), after = ta.value.slice(pos);
+      const nb = oneKey ? Q.translit.applyOnce(before) : retype(before);
+      if (nb !== before) { ta.value = nb + after; ta.setSelectionRange(nb.length, nb.length); }
+    }
     ta.addEventListener('input', e => {
-      if (on && !e.isComposing && e.inputType === 'insertText' && e.data) {
-        const pos = ta.selectionStart;
-        const before = ta.value.slice(0, pos), after = ta.value.slice(pos);
-        const nb = Q.translit.applyOnce(before);
-        if (nb !== before) { ta.value = nb + after; ta.setSelectionRange(nb.length, nb.length); }
+      if (on && !e.isComposing && /^insert/.test(e.inputType || '') && e.inputType !== 'insertFromPaste' && e.inputType !== 'insertLineBreak') {
+        convertAtCaret(e.inputType === 'insertText' && e.data && e.data.length === 1);
       }
       update();
     });
+    ta.addEventListener('compositionend', () => { if (on) { convertAtCaret(false); update(); } });
     ta.addEventListener('paste', e => {
       if (!on) return;
       const text = (e.clipboardData || window.clipboardData).getData('text');
@@ -95,14 +115,12 @@
     const fontSel = h('select', { id: 'kb-font', class: 'input', onchange: e => { settings.kbFont = e.target.value; Q.store.save(); applyFont(); } },
       Q.FONTS.map(f => h('option', { value: f.id, selected: f.id === settings.kbFont }, f.label)));
     const sizeIn = h('input', { id: 'kb-size', type: 'range', min: 24, max: 96, step: 2, value: settings.kbSize, 'aria-label': 'Text size', oninput: e => { settings.kbSize = Number(e.target.value); applyFont(); }, onchange: () => Q.store.save() });
-    const onToggle = h('label', { class: 'toggle', title: 'Turn off to type Latin letters as they are' },
-      h('input', { id: 'kb-on', type: 'checkbox', checked: true, onchange: e => { on = e.target.checked; ta.focus(); } }), 'Latin → Arabic');
 
     const toolbar = h('div', { class: 'kb-toolbar' },
       h('div', { class: 'row' },
         h('div', { class: 'field' }, h('label', { for: 'kb-font' }, 'Script / font'), fontSel),
         h('div', { class: 'field' }, h('label', { for: 'kb-size' }, 'Size'), sizeIn)),
-      h('div', { class: 'row' }, onToggle,
+      h('div', { class: 'row' },
         h('button', { class: 'btn', type: 'button', onclick: () => Q.copy(ta.value, ta) }, 'Copy'),
         h('button', { class: 'btn ghost', type: 'button', onclick: () => { ta.value = ''; ta.focus(); update(); } }, 'Clear'),
         h('button', { class: 'btn ghost', type: 'button', onclick: () => { ta.value = SAMPLE; update(); } }, 'Bismillah')));

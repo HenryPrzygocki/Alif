@@ -113,6 +113,7 @@
   };
   Q.applyFont = function () {
     document.documentElement.style.setProperty('--f-arabic', Q.arabicFontCss(Q.store.state.settings.font));
+    document.documentElement.style.setProperty('--f-quran', Q.quranFontCss(Q.store.state.settings.font));
   };
 
   /* Shared chart tooltip */
