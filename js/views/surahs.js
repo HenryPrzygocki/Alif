@@ -54,7 +54,7 @@
     const mode = opt.mode || p.text;
     const verse = doc.verses[v - 1];
     const tr = Q.quran.translit(doc, v);
-    const line = h('div', { class: 'qline mode-' + mode + (opt.size ? ' size-' + opt.size : ''), dir: mode === 'translit' ? 'ltr' : 'rtl' });
+    const line = h('div', { class: 'qline mode-' + mode + (opt.size ? ' size-' + opt.size : ''), dir: 'rtl' });   // words always run right to left, as in the mushaf
     verse.words.forEach((ar, i) => {
       const state = opt.hide ? opt.hide(i) : 'show';
       const showMeaning = opt.meaning != null ? opt.meaning : p.meaning;
@@ -335,7 +335,7 @@
       if (n !== 1 && n !== 9) {
         const tr = Q.quran.basmalaTranslit();
         list.append(h('div', { class: 'qverse basmala', 'data-verse': '0' },
-          h('div', { class: 'qline mode-' + prefs().text, dir: prefs().text === 'translit' ? 'ltr' : 'rtl' },
+          h('div', { class: 'qline mode-' + prefs().text, dir: 'rtl' },
             Q.BASMALA.split(' ').map((w, i) => h('span', { class: 'qw static' }, h('span', { class: 'qw-ar ar' }, w), prefs().text !== 'arabic' ? h('span', { class: 'qw-tr' }, tr[i]) : null)))));
       }
       doc.verses.forEach(verse => {
