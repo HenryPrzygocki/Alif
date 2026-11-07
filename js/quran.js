@@ -8,7 +8,7 @@
 
   Q.RECITERS = [
     { id: 'husary', label: 'Al-Ḥuṣarī', sub: 'Murattal · steady pace', everyayah: 'Husary_128kbps', qcom: 6 },
-    { id: 'muallim', label: 'Al-Ḥuṣarī · teaching', sub: 'Muʿallim · slow, made for learners', everyayah: 'Husary_Muallim_128kbps' },
+    { id: 'muallim', label: 'Al-Ḥuṣarī · teaching', sub: 'Muʿallim · slow, made for learners', everyayah: 'Husary_Muallim_128kbps', qcom: 12 },
   ];
   Q.RECITER = Object.fromEntries(Q.RECITERS.map(r => [r.id, r]));
   Q.BASMALA = 'بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ';
@@ -138,6 +138,9 @@
 
   function everyAyah(r, n, v) { return `https://everyayah.com/data/${r.everyayah}/${pad(n)}${pad(v)}.mp3`; }
 
+  /* rough length of each word, for spreading words over a clip that has no timings */
+  function wordWeights(words) { return words.map(w => [...w].filter(ch => /[ء-يٱ]/.test(ch)).length + 1); }
+
   /* ---------- player ----------
      One shared audio element. A clip is { src, start, end, seg }; play() takes a list of clips to try
      in order and resolves when the clip ends (rejects with 'stopped' if cut short). */
@@ -165,9 +168,17 @@
     if (!current) return;
     const t = audio.currentTime * 1000;
     if (current.end != null && audio.currentTime >= current.end) { audio.pause(); finish(true); return; }
-    if (current.seg && current.onWord) {
+    let seg = current.seg;
+    // no timings: spread the words over the clip by their length, so the sweep still moves word by word
+    if (!seg && current.est && current.onWord && isFinite(audio.duration) && audio.duration > 0) {
+      const from = (current.start || 0) * 1000, to = (current.end != null ? current.end : audio.duration) * 1000;
+      const total = current.est.reduce((a, b) => a + b, 0) || 1;
+      let at = from;
+      seg = current.seg = current.est.map((len, i) => { const d = (to - from) * len / total; const s = { w: i, start: at, end: at + d }; at += d; return s; });
+    }
+    if (seg && current.onWord) {
       let w = -1, p = 0;
-      for (const s of current.seg) {
+      for (const s of seg) {
         if (t >= s.start - 30 && t < s.end) { w = s.w; p = Math.min(1, Math.max(0, (t - s.start) / (s.end - s.start))); break; }
       }
       if (w !== current.lastW || Math.abs(p - current.lastP) > 0.02) { current.lastW = w; current.lastP = p; current.onWord(w, p); }
@@ -178,14 +189,14 @@
   function play(clips, onWord = null) {
     stop();
     return new Promise((resolve, reject) => {
-      current = { resolve, reject, onWord, lastW: -2, lastP: 0, raf: 0, start: 0, end: null, seg: null };
+      current = { resolve, reject, onWord, lastW: -2, lastP: 0, raf: 0, start: 0, end: null, seg: null, est: null };
       const mine = current;
       let i = 0;
       const tryNext = () => {
         if (current !== mine) return;
         if (i >= clips.length) { current = null; reject(new Error('audio-unavailable')); return; }
         const clip = clips[i++];
-        Object.assign(mine, { start: clip.start || 0, end: clip.end != null ? clip.end : null, seg: clip.seg || null });
+        Object.assign(mine, { start: clip.start || 0, end: clip.end != null ? clip.end : null, seg: clip.seg || null, est: clip.est || null });
         audio.onerror = () => tryNext();
         if (audio.src !== clip.src) audio.src = clip.src;
         audio.playbackRate = rate;
@@ -219,24 +230,33 @@
     async verse(n, v, reciterId, onWord) {
       const r = Q.RECITER[reciterId] || Q.RECITERS[0];
       const t = await timings(n, r.id);
+      const est = docs[n] && docs[n].verses[v - 1] ? wordWeights(docs[n].verses[v - 1].words) : null;
       const clips = [];
-      if (t && t[v] && t[v].url) clips.push({ src: t[v].url, start: t[v].start, end: t[v].end, seg: t[v].seg });
-      clips.push({ src: everyAyah(r, n, v) });
-      if (r.qcom) clips.push({ src: `https://verses.quran.com/Husary/mp3/${pad(n)}${pad(v)}.mp3` });
+      if (t && t[v] && t[v].url) clips.push({ src: t[v].url, start: t[v].start, end: t[v].end, seg: t[v].seg, est });
+      clips.push({ src: everyAyah(r, n, v), est });
+      if (r.id === 'husary') clips.push({ src: `https://verses.quran.com/Husary/mp3/${pad(n)}${pad(v)}.mp3`, est });
       return play(clips, onWord);
     },
-    basmala(reciterId) {
+    /* the Bismillah before a surah: Al-Fātiḥah's first verse, with its word timings */
+    async basmala(reciterId, onWord) {
       const r = Q.RECITER[reciterId] || Q.RECITERS[0];
-      return play([{ src: everyAyah(r, 1, 1) }, { src: 'https://verses.quran.com/Husary/mp3/001001.mp3' }]);
+      const t = await timings(1, r.id);
+      const est = wordWeights(Q.BASMALA.split(' '));
+      const clips = [];
+      if (t && t[1] && t[1].url) clips.push({ src: t[1].url, start: t[1].start, end: t[1].end, seg: t[1].seg, est });
+      clips.push({ src: everyAyah(r, 1, 1), est });
+      if (r.id === 'husary') clips.push({ src: 'https://verses.quran.com/Husary/mp3/001001.mp3', est });
+      return play(clips, onWord);
     },
     /* one word: the reciter's own voice when timings exist, otherwise Quran.com's word audio */
-    async word(n, v, w, reciterId) {
+    async word(n, v, w, reciterId, onWord) {
       const r = Q.RECITER[reciterId] || Q.RECITERS[0];
       const t = await timings(n, r.id);
       const s = t && t[v] && t[v].seg && t[v].seg.find(x => x.w === w);
-      const wbw = { src: `https://audio.qurancdn.com/wbw/${pad(n)}_${pad(v)}_${pad(w + 1)}.mp3` };
-      if (s && t[v].url) return play([{ src: t[v].url, start: Math.max(0, s.start - 40) / 1000, end: (s.end + 60) / 1000 }, wbw]);
-      return play([wbw]);
+      const wbw = { src: `https://audio.qurancdn.com/wbw/${pad(n)}_${pad(v)}_${pad(w + 1)}.mp3`, est: [1] };
+      const cb = onWord ? (i, p) => onWord(i < 0 ? -1 : w, p) : null;
+      if (s && t[v].url) return play([{ src: t[v].url, start: Math.max(0, s.start - 40) / 1000, end: (s.end + 60) / 1000, seg: [{ w: 0, start: s.start, end: s.end }] }, wbw], cb);
+      return play([wbw], cb);
     },
     /* 'word' when Quran.com timings were found for this surah, 'verse' otherwise, null before the first try */
     following(n, reciterId) {

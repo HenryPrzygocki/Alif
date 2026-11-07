@@ -33,7 +33,7 @@
     const stageEl = h('div', { class: 'frame stage' });
     const actionsEl = h('div', { class: 'stage-actions' });
     const layout = h('div', { class: 'practice' + (cfg.hideSetup ? ' focus' : '') }, setupEl, h('div', { class: 'stage-wrap' }, stageTop, stageEl, actionsEl));
-    root.append(h('div', { class: 'page' },
+    root.append(h('div', { class: 'page practice-page' },
       h('div', { class: 'page-head' },
         h('div', null,
           h('h1', null, 'Letter practice'),

@@ -101,7 +101,10 @@
       const t = tok = makeRun();
       try {
         for (let k = 0; k < times; k++) {
-          await Q.audio.word(doc.n, cur.v, cur.i, prefs().reciter);
+          await Q.audio.word(doc.n, cur.v, cur.i, prefs().reciter, (w, p) => {
+            highlightWord(Q.$('#view'), cur.v, w, p);
+            const big = el.querySelector('.qw'); if (big) { big.classList.toggle('now', w >= 0); big.style.setProperty('--p', p.toFixed(3)); }
+          });
           if (t.stopped) return;
           if (k < times - 1) await Q.wait(Math.round(Q.audio.lastDuration() * 1000 * 1.6 + 900), t);
           if (t.stopped) return;
@@ -114,7 +117,7 @@
       const tr = Q.quran.translit(doc, cur.v);
       el.hidden = false;
       el.replaceChildren(
-        h('span', { class: 'ar' }, verse.words[cur.i]),
+        h('span', { class: 'qw static' }, h('span', { class: 'qw-ar ar' }, verse.words[cur.i])),
         h('div', null, h('div', { class: 'tr' }, tr[cur.i]), h('div', { class: 'm' }, `${verse.w[cur.i] || ''} · verse ${cur.v}, word ${cur.i + 1}`)),
         h('div', { class: 'row' },
           h('button', { class: 'btn sm', type: 'button', onclick: () => say(1) }, '▶ Again'),
@@ -326,7 +329,7 @@
     const focus = wordFocus(doc);
     function drawFollow() {
       const f = Q.audio.following(n, prefs().reciter);
-      followNote.textContent = f === 'word' ? 'Following each word as it is recited' : f === 'verse' ? 'Following verse by verse (word timings not available for this recitation)' : '';
+      followNote.textContent = f === 'word' ? 'Following each word as it is recited' : f === 'verse' ? 'Following the words approximately (exact timings did not load)' : '';
     }
     const playBtn = h('button', { class: 'btn primary', type: 'button', onclick: () => run ? stopRun() : playFrom(pos) });
 
@@ -336,7 +339,7 @@
         const tr = Q.quran.basmalaTranslit();
         list.append(h('div', { class: 'qverse basmala', 'data-verse': '0' },
           h('div', { class: 'qline mode-' + prefs().text, dir: 'rtl' },
-            Q.BASMALA.split(' ').map((w, i) => h('span', { class: 'qw static' }, h('span', { class: 'qw-ar ar' }, w), prefs().text !== 'arabic' ? h('span', { class: 'qw-tr' }, tr[i]) : null)))));
+            Q.BASMALA.split(' ').map((w, i) => h('span', { class: 'qw static', 'data-i': i }, h('span', { class: 'qw-ar ar' }, w), prefs().text !== 'arabic' ? h('span', { class: 'qw-tr' }, tr[i]) : null)))));
       }
       doc.verses.forEach(verse => {
         list.append(h('div', { class: 'qverse', 'data-verse': verse.n },
@@ -374,7 +377,7 @@
             pos = v;
             if (v === 1 && n !== 1 && n !== 9 && prefs().basmala) {
               mark(0, true);
-              await Q.audio.basmala(prefs().reciter);
+              await Q.audio.basmala(prefs().reciter, (w, p) => highlightWord(list, 0, w, p));
               if (tok.stopped) return;
             }
             for (let r = 0; r < prefs().repeat; r++) {
@@ -415,21 +418,28 @@
         onclick: e => { store().setQPref(key, val); e.currentTarget.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === e.currentTarget))); },
       }, text))));
 
+    /* the repeat options fold away (closed by default on phones, where the player covers the verses) */
+    let optsOpen = Q.storage.get('huruf.playerOpts', window.innerWidth > 760);
+    const optsBtn = h('button', { class: 'btn ghost sm qplayer-toggle', type: 'button', 'aria-expanded': String(optsOpen), onclick: () => {
+      optsOpen = !optsOpen; Q.storage.set('huruf.playerOpts', optsOpen);
+      optsBtn.setAttribute('aria-expanded', String(optsOpen)); optsBtn.textContent = optsOpen ? 'Hide ▾' : 'Options ▴';
+      player.querySelector('.qplayer-opts').hidden = !optsOpen;
+    } }, optsOpen ? 'Hide ▾' : 'Options ▴');
     const player = h('div', { class: 'qplayer' },
       focus.el,
       h('div', { class: 'row' },
         h('button', { class: 'btn ghost', type: 'button', 'aria-label': 'Previous verse', onclick: () => { pos = Math.max(1, pos - 1); if (run) playFrom(pos); else { mark(pos, true); drawButton(); } } }, '⏮'),
         playBtn,
         h('button', { class: 'btn ghost', type: 'button', 'aria-label': 'Next verse', onclick: () => { pos = Math.min(count, pos + 1); if (run) playFrom(pos); else { mark(pos, true); drawButton(); } } }, '⏭'),
-        status, followNote),
-      h('div', { class: 'row qplayer-opts' },
+        status, followNote, optsBtn),
+      h('div', { class: 'row qplayer-opts', hidden: !optsOpen },
         opt('Each verse', 'repeat', [[1, '1×'], [2, '2×'], [3, '3×'], [5, '5×']]),
         opt('Pause for you to repeat', 'gap', [[false, 'Off'], [true, 'On']]),
         opt('When it ends', 'loop', [[false, 'Stop'], [true, 'Start again']]),
         n !== 1 ? opt('Bismillah first', 'basmala', [[true, 'Yes'], [false, 'No']]) : null));
 
     body.append(
-      h('p', { class: 'hint-line' }, 'Tap any word to hear it alone. Tap a verse number to start there. ', h('kbd', { class: 'key' }, 'Space'), ' play or pause, ', h('kbd', { class: 'key' }, '↑'), h('kbd', { class: 'key' }, '↓'), ' change verse.'),
+      h('p', { class: 'hint-line' }, 'Tap any word to hear it alone. Tap a verse number to start there. ', h('span', { class: 'kb-only' }, h('kbd', { class: 'key' }, 'Space'), ' play or pause, ', h('kbd', { class: 'key' }, '↑'), h('kbd', { class: 'key' }, '↓'), ' change verse.')),
       list, player);
     drawVerses();
     drawButton();
@@ -618,7 +628,7 @@
 
     function recorderBlock(v) {
       if (!rec) return null;
-      return rec.block(() => Q.audio.verse(n, v, prefs().reciter), 'verse ' + v, stopRun);
+      return rec.block(() => Q.audio.verse(n, v, prefs().reciter, (w, p) => highlightWord(stage, v, w, p)), 'verse ' + v, stopRun);
     }
 
     function onKey(e) {
@@ -721,7 +731,12 @@
           store().qGrade(verse.key, m === 0 ? 'good' : m <= 2 ? 'hard' : 'again');
           onProgress();
           const tok = makeRun(); stopRun(); run = tok; setRun(tok);
-          Q.audio.verse(n, v, prefs().reciter).catch(audioProblem);
+          answer.setAttribute('data-verse', v);
+          Q.audio.verse(n, v, prefs().reciter, (w, p) => {
+            const line = answer, el = w >= 0 ? line.children[w] : null;
+            line.querySelectorAll('.qw.now').forEach(x => { if (x !== el) x.classList.remove('now'); });
+            if (el) { el.classList.add('now'); el.style.setProperty('--p', p.toFixed(3)); }
+          }).catch(audioProblem);
           body.querySelector('.frame').append(h('div', { class: 'row', style: { justifyContent: 'flex-end' } },
             h('button', { class: 'btn primary lg', type: 'button', onclick: () => { stopRun(); if (v < count) { v++; draw(); } else done(); } }, v < count ? 'Next verse' : 'See result', h('kbd', null, 'Space'))));
         }
@@ -840,7 +855,7 @@
         if (first) { const tr = Q.quran.translit(doc, v); first.classList.remove('blank'); first.classList.add('cue'); first.querySelector('.qw-ar').textContent = Q.quran.cue(verse.words[0], true); const t = first.querySelector('.qw-tr'); if (t) t.textContent = Q.quran.cue(tr[0], false); }
       } }, 'Hint: first letter');
       const verseEl = h('div', { class: 'qverse big recall-verse', 'data-verse': v }, verseBadge(v, { tabindex: -1 }),
-        h('div', { class: 'qverse-main' }, wordLine(doc, v, { size: 'lg', hide, onWord: (w) => { if (revealed) Q.audio.word(n, v, w, prefs().reciter).catch(audioProblem); } }),
+        h('div', { class: 'qverse-main' }, wordLine(doc, v, { size: 'lg', hide, onWord: (w) => { if (revealed) Q.audio.word(n, v, w, prefs().reciter, (x, p) => highlightWord(body, v, x, p)).catch(audioProblem); } }),
           revealed && prefs().trans ? h('p', { class: 'qtrans' }, Q.quran.translation(verse)) : null));
       const grade = g => {
         stopRun();
@@ -915,7 +930,7 @@
         h('div', { class: 'page-head' }, h('div', null,
           h('h1', null, 'Review'),
           h('p', null, 'Verses come back after a day, then 3 days, a week, two weeks, a month. Say each one from memory, reveal it, and grade yourself honestly. Missed ones come back sooner.'))),
-        h('details', { class: 'qdisplay-details', open: window.innerWidth > 760 }, h('summary', null, 'Display settings'),
+        !due.length ? null : h('details', { class: 'qdisplay-details', open: window.innerWidth > 760 }, h('summary', null, 'Display settings'),
           h('div', { class: 'card qdisplay' }, displayBar(() => { if (session) session.redraw(); else render(index); }))),
         body));
       if (!due.length) {

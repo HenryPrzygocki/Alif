@@ -167,7 +167,7 @@
     root.append(h('div', { class: 'page' },
       head,
       welcomeCard(),
-      h('div', { class: 'split' }, countdown, todayCard),
+      h('div', { class: 'split today-count' }, countdown, todayCard),
       h('div', { class: 'split' }, quranCard, weakCard),
       quick,
       iqra));

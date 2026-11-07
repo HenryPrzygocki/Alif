@@ -545,7 +545,7 @@ kbd.key {
   .split { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 760px) {
-  .app { grid-template-columns: minmax(0, 1fr); }
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
   /* phones: a slim header on top, the main pages in a bar at the bottom, the rest under "More" */
   .phone-head {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -743,6 +743,25 @@ hr.soft { border: 0; border-top: 1px dashed var(--line); margin: 6px 0; width: 1
   background: var(--sheet); border: 1px solid var(--line); box-shadow: var(--shadow);
 }
 .qplayer-opts { gap: 14px 22px; align-items: flex-end; }
+.qplayer-toggle { margin-left: auto; }
+@media (max-width: 760px) {
+  .qplayer { padding: 8px 10px; gap: 8px; }
+  .qplayer .follow-note { display: none; }
+  .qplayer > .row:not(.qplayer-opts) { flex-wrap: nowrap; gap: 4px; }
+  .qplayer > .row:not(.qplayer-opts) .btn.ghost { padding-inline: 10px; }
+  .qplayer > .row:not(.qplayer-opts) .small { white-space: nowrap; font-size: 12px; }
+  .qplayer-toggle { padding-inline: 8px; white-space: nowrap; }
+  /* surah page: get to the verses sooner */
+  .qtab { padding: 8px 10px; gap: 8px; justify-content: center; }
+  .qtab-num { width: 24px; height: 24px; font-size: 12px; }
+  .qtab b { font-size: 15px; }
+  .qtab span span { display: none; }
+  .hint-line kbd, .hint-line .kb-only { display: none; }
+}
+@media (hover: none) { .hint-line .kb-only { display: none; } }
+/* the tapped word's big copy sweeps like the verse words */
+.wfocus .qw { padding: 0 4px; }
+.wfocus .qw-ar { font-size: 44px; line-height: 1.6; }
 
 /* learn coach */
 .vpicker { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
@@ -801,7 +820,7 @@ hr.soft { border: 0; border-top: 1px dashed var(--line); margin: 6px 0; width: 1
   .nav-group { display: none; }
   .nav-badge { margin-left: 4px; }
   .qtabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .qtab { flex-direction: column; text-align: center; padding: 10px 6px; gap: 6px; }
+  .qtab { flex-direction: row; justify-content: center; text-align: left; padding: 8px 6px; gap: 8px; }
   .qtab span span { display: none; }
   .qverse, .qverse.big { grid-template-columns: minmax(0, 1fr); }
   .vbadge { margin-top: 0; }
@@ -898,3 +917,17 @@ hr.soft { border: 0; border-top: 1px dashed var(--line); margin: 6px 0; width: 1
 .welcome-n { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--gold-soft); color: var(--gold); font: 600 13px var(--f-body); }
 .welcome-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px 20px; flex-wrap: wrap; }
 @media (max-width: 980px) { .welcome-steps { grid-template-columns: minmax(0, 1fr); } }
+
+/* phones: lead with what to do next; the header already counts down to Ramadan */
+@media (max-width: 760px) {
+  .page > .today-count { order: 3; }
+  .page > .today-count ~ * { order: 4; }
+  .page > .today-count + .split { order: 2; }
+  .stage { min-height: 230px; }
+  .practice.focus .stage { min-height: 260px; }
+  .cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  /* practice: the instructions live in the mode list; keep the Reveal button on the first screen */
+  .practice-page .page-head p { display: none; }
+}
