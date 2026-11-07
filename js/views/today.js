@@ -32,145 +32,79 @@
         s('circle', { cx: '50', cy: '50', r: '30.5', 'stroke-width': '0.6' })));
   }
 
+  /* Today: just what to do next. One card for the Quran, one for the letters, and the countdown. */
   Q.views.today = function (root) {
     const st = Q.store.state;
     const r = Q.ramadan();
-    const book = st.settings.iqraBook === 0 ? 0 : (st.settings.iqraBook || 1);   // 0 = not using Iqra
     const today = Q.store.today();
     const streak = Q.store.streak();
     const goal = st.settings.goal || 150;
+    const fmtLong = d => Q.fmtDate(d, { weekday: 'long', month: 'long', day: 'numeric' });
 
-    /* greeting */
     const head = h('div', { class: 'page-head' },
       h('div', null,
         h('h1', { class: 'hello' }, 'As-salāmu ʿalaykum', h('span', { class: 'ar' }, 'السَّلَامُ عَلَيْكُمْ')),
-        h('p', null, Q.fmtDate(new Date(), { weekday: 'long', month: 'long', day: 'numeric' }) + '. A little every day adds up. Ten focused minutes beats one long session a week.')),
-      h('a', { class: 'btn primary lg', href: '#practice' }, 'Start practice'));
+        h('p', null, Q.fmtDate(new Date(), { weekday: 'long', month: 'long', day: 'numeric' }))));
 
-    /* countdown */
-    const booksLeft = book ? 6 - book + 1 : 0;
-    const perBook = r.days > 0 ? Math.floor(r.days / booksLeft) : 0;
-    const fmtLong = d => Q.fmtDate(d, { weekday: 'long', month: 'long', day: 'numeric' });
-    const shown = r.phase === 'during' ? r.dayOf : r.days;
-    let body;
-    if (r.phase === 'during') {
-      body = [h('div', { class: 'eyebrow' }, 'Ramadan Mubarak'), h('h2', null, `Day ${r.dayOf} of Ramadan`), h('p', { class: 'sub' }, 'Keep reading every day. Every letter counts.')];
-    } else if (r.phase === 'tonight') {
-      body = [h('div', { class: 'eyebrow' }, 'Tonight'), h('h2', null, 'Ramadan begins at sunset'), h('p', { class: 'sub' }, `First taraweeh tonight. First fast ${fmtLong(r.fast)}.`)];
-    } else {
-      body = [
-        h('div', { class: 'eyebrow' }, 'Countdown'),
-        h('h2', null, `${r.days === 1 ? 'Day' : 'Days'} until Ramadan${r.year ? ' ' + r.year : ''}`),
-        h('p', { class: 'sub' }, `Begins at sunset on ${fmtLong(r.night)}, ${r.night.getFullYear()}: the first taraweeh. First fast ${fmtLong(r.fast)}.`,
-          r.source === 'custom' ? ' (Your own date from Setup.)' : ' Expected date; your mosque confirms it after the moon sighting.'),
-        book
-          ? h('p', { class: 'sub' }, `That is about ${Math.round(r.days / 7)} weeks. With ${booksLeft} Iqra ${booksLeft === 1 ? 'book' : 'books'} to go, aim for roughly `, h('b', null, `${perBook} days per book`), '.')
-          : h('p', { class: 'sub' }, `That is about ${Math.round(r.days / 7)} weeks. Ten minutes a day from now is over `, h('b', null, `${Math.round(r.days * 10 / 60)} hours`), ' of practice by then.'),
-      ];
-    }
-    const countdown = h('section', { class: 'card countdown' },
-      h('div', { class: 'ayah-num' }, ornament(),
-        h('div', null, h('span', { class: 'n num' }, shown), h('span', { class: 'n-ar' }, Q.toArabicDigits(shown)))),
-      h('div', { class: 'stack' }, body));
-
-    /* today numbers */
-    const goalPct = Math.min(1, today.n / goal);
-    const todayCard = h('section', { class: 'card stack' },
-      h('div', { class: 'card-head' }, h('h2', null, 'Today'), h('span', { class: 'small muted num' }, `goal ${goal} reads`)),
-      h('div', { class: 'stack', style: { gap: '6px' } },
-        h('div', { class: 'row', style: { justifyContent: 'space-between' } },
-          h('span', { class: 'small' }, today.n >= goal ? 'Goal reached. Alḥamdulillāh.' : `${goal - today.n} reads to today's goal`),
-          h('span', { class: 'small muted num' }, Q.pct(goalPct))),
-        h('div', { class: 'bar', role: 'progressbar', 'aria-valuenow': Math.round(goalPct * 100), 'aria-valuemin': 0, 'aria-valuemax': 100 }, h('i', { style: { width: (goalPct * 100) + '%' } }))),
-      h('div', { class: 'grid cols-2', style: { gap: '14px' } },
-        h('div', { class: 'stat' }, h('span', { class: 'v' }, Q.fmtInt(today.n)), h('span', { class: 'k' }, 'letters read')),
-        h('div', { class: 'stat' }, h('span', { class: 'v' }, today.n ? Q.pct(1 - today.w / today.n) : '–'), h('span', { class: 'k' }, 'right')),
-        h('div', { class: 'stat' }, h('span', { class: 'v' }, streak.cur, h('small', null, streak.cur === 1 ? 'day' : 'days')), h('span', { class: 'k' }, 'streak · best ' + streak.best)),
-        h('div', { class: 'stat' }, h('span', { class: 'v' }, Math.round(today.ms / 60000), h('small', null, 'min')), h('span', { class: 'k' }, 'practised'))));
-
-    /* Iqra path */
-    const track = h('div', { class: 'iqra-track' }, Q.IQRA.map(b =>
-      h('button', {
-        type: 'button', class: 'iqra-step' + (b.n < book ? ' done' : '') + (b.n === book ? ' current' : ''),
-        title: b.covers, 'aria-pressed': String(b.n === book),
-        onclick: () => { Q.store.setSetting('iqraBook', b.n); Q.go('today'); },
-      },
-        h('span', { class: 'bn' }, (b.n < book ? '✓ ' : '') + 'Iqra ' + b.n),
-        h('span', { class: 'bt' }, b.title))));
-    const cur = Q.IQRA[Math.max(1, book) - 1];
-    const iqra = !book ? null : h('section', { class: 'card stack' },
-      h('div', { class: 'card-head' },
-        h('h2', null, 'Your Iqra path'),
-        h('span', { class: 'small muted' }, 'Click the book you are on with your teacher')),
-      track,
-      h('p', { class: 'small', style: { color: 'var(--ink-2)' } }, h('b', null, `Iqra ${cur.n}: `), Q.mixed(Q.fill(cur.covers)),
-        cur.n >= 4 ? ' For now the site drills the letters and vowels. Sukūn, shadda and real words are the next modules to build.' : ''));
-
-    /* trickiest letters */
-    // only letters that really are weak (below "Good"), not just the lowest of a strong set
-    const weak = Q.store.weakest(5, 3).filter(x => x.m < 0.8);
-    const pairsToday = Q.store.mixups(2, 2);
-    const weakCard = h('section', { class: 'card' },
-      h('div', { class: 'card-head' }, h('h2', null, 'Your weak spots'), weak.length || pairsToday.length ? h('a', { class: 'small', href: '#progress' }, 'All stats') : null),
-      weak.length || pairsToday.length
-        ? h('div', { class: 'stack' },
-          weak.length ? null : h('p', { class: 'small muted' }, 'No struggling letters right now. These pairs still trip you up:'),
-          h('div', { class: 'weak-list' }, weak.map(({ l, m, r: rec }) =>
-            h('div', { class: 'weak-item' },
-              h('span', { class: 'ar' }, l.ch),
-              h('div', { class: 'stack', style: { gap: '4px' } },
-                h('div', { class: 'row', style: { justifyContent: 'space-between' } },
-                  h('span', { class: 'nm' }, l.name), h('span', { class: 'small muted num' }, `${Q.pct(1 - rec.w / rec.n)} right · ${rec.n} reads`)),
-                h('div', { class: 'bar' }, h('i', { style: { width: Math.round(m * 100) + '%' } }))),
-              h('span', { class: 'tag' }, Q.store.LEVELS[Q.store.level(l.id)])))),
-          pairsToday.length ? h('div', { class: 'stack', style: { gap: '0' } }, h('div', { class: 'eyebrow', style: { marginTop: '6px' } }, 'You often mix up'), pairsToday.map(Q.mixPairRow)) : null,
-          h('button', { class: 'btn primary', type: 'button', onclick: () => { Q.store.setPractice('focus', 'weak'); Q.go('practice'); } }, 'Practise my weak spots'))
-        : h('p', { class: 'empty' }, 'Do a few rounds of practice and the letters you miss most will show up here.'));
-
-    /* quick start */
-    const rec = PRESETS.find(p => p.book === Math.min(book || 1, 4));
-    const quick = h('section', { class: 'card' },
-      h('div', { class: 'card-head' }, h('h2', null, 'Quick start')),
-      h('div', { class: 'quick' }, PRESETS.map(p =>
-        h('a', { href: '#practice', class: p === rec ? 'rec' : '', onclick: e => { e.preventDefault(); Q.startPreset(p.preset); } },
-          h('b', null, p.title + (p === rec ? ' · for you now' : '')), h('span', null, Q.mixed(Q.fill(p.sub)))))));
-
-    /* Quran: reviews due and surahs in progress (filled in once the surah list loads) */
-    const quranCard = h('section', { class: 'card today-quran' },
-      h('div', { class: 'card-head' }, h('h2', null, 'Your surahs'), h('a', { class: 'small', href: '#surahs' }, 'All surahs')),
-      h('p', { class: 'empty' }, 'Loading…'));
+    /* the Quran: continue where you were, and what to revise */
+    const quranCard = h('section', { class: 'card next-card' }, h('p', { class: 'empty' }, 'Loading…'));
     Q.quran.loadIndex().then(index => {
-      const due = Q.store.qDue();
-      const list = Q.store.state.quran.list.map(n => index.find(x => x.n === n)).filter(Boolean).slice(0, 3);
-      const verses = Q.store.today().q || 0;
-      const kids = [h('div', { class: 'card-head' }, h('h2', null, 'Your surahs'), h('a', { class: 'small', href: '#surahs' }, 'All surahs'))];
-      kids.push(h('div', { class: 'review-cta' + (due.length ? ' has-due' : ''), style: { padding: '12px 14px', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)' } },
-        h('div', null,
-          h('b', null, due.length ? `${due.length} ${due.length === 1 ? 'verse' : 'verses'} to review` : 'No reviews due'),
-          h('div', { class: 'small muted' }, verses ? `${verses} verse ${verses === 1 ? 'practice' : 'practices'} today` : 'Reviews keep what you memorized from fading')),
-        due.length ? h('a', { class: 'btn primary', href: '#review' }, 'Review now') : null));
-      if (list.length) {
-        list.forEach(meta => {
-          const sum = Q.store.qSummary(meta.n, meta.verses);
-          kids.push(h('a', { class: 'srow', href: '#surah-' + meta.n, style: { gridTemplateColumns: 'minmax(0, 1fr) 120px auto' } },
-            h('span', { class: 'srow-name' }, h('b', null, meta.name), h('span', { class: 'small muted' }, `${sum.mem} of ${sum.count} memorized`)),
-            segBarMini(sum),
-            h('span', { class: 'ar sname', style: { fontSize: '22px' } }, meta.ar)));
-        });
+      const last = st.quran.last && index.find(x => x.n === st.quran.last.n);
+      const mine = st.quran.list.map(n => index.find(x => x.n === n)).filter(Boolean);
+      const cur = last || mine.find(m => { const x = Q.store.qSummary(m.n, m.verses); return x.mem < x.count; });
+      const revise = Q.store.qReviseList().map(g => index.find(x => x.n === g.n)).filter(Boolean);
+      const kids = [h('div', { class: 'eyebrow' }, 'Quran')];
+      if (cur) {
+        const sum = Q.store.qSummary(cur.n, cur.verses);
+        const done = sum.mem === sum.count;
+        kids.push(
+          h('h2', null, cur.name, h('span', { class: 'ar sname' }, cur.ar)),
+          h('p', { class: 'small muted' }, done ? 'Memorized. Mā shāʾ Allāh.' : `${sum.mem} of ${sum.count} verses memorized`),
+          segBarMini(sum),
+          h('a', { class: 'btn primary lg', href: '#surah-' + cur.n }, done ? 'Open ' + cur.name : 'Continue'));
       } else {
-        kids.push(h('p', { class: 'small', style: { color: 'var(--ink-2)' } }, 'Start with Al-Fātiḥah: it is recited in every prayer. Listen to it word by word, then learn it one verse at a time.'),
-          h('a', { class: 'btn primary', href: '#surah-1' }, 'Start Al-Fātiḥah'));
+        kids.push(h('h2', null, 'Al-Fātiḥah'), h('p', { class: 'small muted' }, 'Recited in every prayer. Listen to it word by word, then learn it one line at a time.'),
+          h('a', { class: 'btn primary lg', href: '#surah-1' }, 'Start Al-Fātiḥah'));
       }
+      if (revise.length) {
+        kids.push(h('div', { class: 'revise-hint' },
+          h('span', null, 'Time to revise: ', h('b', null, revise.slice(0, 3).map(m => m.name).join(', ')), revise.length > 3 ? ` and ${revise.length - 3} more` : ''),
+          h('a', { class: 'btn sm', href: '#review' }, 'Revise')));
+      }
+      kids.push(h('a', { class: 'small', href: '#surahs' }, 'All surahs'));
       quranCard.replaceChildren(...kids);
     }).catch(() => quranCard.replaceChildren(h('p', { class: 'empty' }, 'Surahs load when the site is opened from its web address.')));
+
+    /* the letters: today's reading and the letters that still trip you up */
+    const weak = Q.store.weakest(5, 3).filter(x => x.m < 0.8);
+    const goalPct = Math.min(1, today.n / goal);
+    const lettersCard = h('section', { class: 'card next-card' },
+      h('div', { class: 'eyebrow' }, 'Letters'),
+      h('h2', null, today.n >= goal ? 'Goal reached today' : today.n ? `${goal - today.n} letters to today’s goal` : 'Read some letters today'),
+      h('div', { class: 'bar', role: 'progressbar', 'aria-valuenow': Math.round(goalPct * 100), 'aria-valuemin': 0, 'aria-valuemax': 100 }, h('i', { style: { width: (goalPct * 100) + '%' } })),
+      weak.length
+        ? h('div', { class: 'weak-chips' }, h('span', { class: 'small muted' }, 'Still tricky:'), weak.map(({ l }) => h('span', { class: 'chip static' }, h('span', { class: 'ar' }, l.ch), l.name)))
+        : h('p', { class: 'small muted' }, today.n ? 'No weak letters right now.' : 'Say each letter out loud, then check yourself.'),
+      h('div', { class: 'row' },
+        h('a', { class: 'btn primary lg', href: '#practice', onclick: () => { if (Q.store.state.practice.focus === 'weak' && !weak.length) Q.store.setPractice('focus', 'all'); } }, today.n ? 'Keep practising' : 'Start practice'),
+        weak.length ? h('button', { class: 'btn', type: 'button', onclick: () => { Q.store.setPractice('focus', 'weak'); Q.go('practice'); } }, 'Practise the tricky ones') : null));
+
+    /* countdown and streak, one line */
+    const days = r.phase === 'during' ? `Day ${r.dayOf} of Ramadan` : r.phase === 'tonight' ? 'Ramadan begins tonight' : `${r.days} ${r.days === 1 ? 'day' : 'days'} until Ramadan`;
+    const strip = h('section', { class: 'card count-strip' },
+      h('div', { class: 'ayah-num sm' }, ornament(), h('span', { class: 'n num' }, r.phase === 'during' ? r.dayOf : r.days)),
+      h('div', { class: 'stack', style: { gap: '2px' } },
+        h('b', null, days),
+        h('span', { class: 'small muted' }, r.phase === 'before' || !r.phase ? `Begins at sunset ${fmtLong(r.night)} · first fast ${fmtLong(r.fast)}` : 'Ramadan Mubarak')),
+      h('div', { class: 'strip-stats' },
+        h('span', null, h('b', null, streak.cur), streak.cur === 1 ? ' day streak' : ' day streak'),
+        h('a', { class: 'small', href: '#progress' }, 'Your progress')));
 
     root.append(h('div', { class: 'page' },
       head,
       welcomeCard(),
-      h('div', { class: 'split today-count' }, countdown, todayCard),
-      h('div', { class: 'split' }, quranCard, weakCard),
-      quick,
-      iqra));
+      h('div', { class: 'grid cols-2 next-grid' }, quranCard, lettersCard),
+      strip));
   };
   /* First visit: what this is, where to begin, and where progress is kept. Goes away once dismissed. */
   function welcomeCard() {
@@ -179,22 +113,14 @@
     const started = Q.store.totals().n > 0 || st.quran.list.length > 0 || Object.keys(st.quran.v).length > 0;
     if (started) return null;
     const close = () => { Q.store.setSetting('welcomed', true); card.remove(); };
-    const step = (n, title, text, link, label) => h('div', { class: 'welcome-step' },
-      h('span', { class: 'welcome-n' }, n),
-      h('div', { class: 'stack', style: { gap: '4px' } }, h('b', null, title), h('p', { class: 'small' }, Q.mixed(text)),
-        link ? h('a', { class: 'btn sm' + (n === 1 ? ' primary' : ''), href: link, onclick: () => Q.store.setSetting('welcomed', true) }, label) : null));
     const card = h('section', { class: 'card welcome' },
       h('div', { class: 'card-head' },
-        h('div', null, h('div', { class: 'eyebrow' }, 'Welcome'), h('h2', null, 'Learn to read the Quran, one letter at a time')),
-        h('button', { class: 'btn ghost sm', type: 'button', onclick: close }, 'Got it, hide this')),
-      h('p', { style: { color: 'var(--ink-2)', maxWidth: '72ch' } },
-        'Made for new Muslims and anyone starting from zero: the Arabic letters first, then short surahs by ear and by heart, with Ramadan as the finish line. It follows the Iqra method, and works alongside a teacher or on its own.'),
-      h('div', { class: 'welcome-steps' },
-        step(1, 'Learn the letters', 'See a letter, say its sound out loud, then check yourself. Quizzes are marked for you.', '#practice', 'Start with the letters'),
-        step(2, 'Listen to Al-Fātiḥah', 'Hear Sheikh al-Ḥuṣarī recite it word by word while you follow the spelling and the meaning.', '#surah-1', 'Open Al-Fātiḥah'),
-        step(3, 'Come back each day', 'Ten minutes is enough. The site keeps your streak, shows your weak letters and brings verses back for review.', null)),
+        h('h2', null, 'Welcome'),
+        h('button', { class: 'btn ghost sm', type: 'button', onclick: close }, 'Hide')),
+      h('p', { style: { color: 'var(--ink-2)', maxWidth: '68ch' } },
+        'Learn to read the Quran and memorize it, even if you don’t read Arabic yet: every word comes with its transliteration and meaning. Start with a surah or with the letters below.'),
       h('div', { class: 'welcome-foot' },
-        h('p', { class: 'small muted' }, 'No account and no sign-up. Your progress is saved in this browser, on this device. Setup has a backup button if you switch phones.'),
+        h('p', { class: 'small muted' }, 'Free, no account. Your progress stays on this device.'),
         h('div', { class: 'row', style: { gap: '8px' } }, h('span', { class: 'small muted' }, 'Spelling'), Q.schemeSwitch())));
     return card;
   }

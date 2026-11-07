@@ -248,15 +248,15 @@
       if (r.id === 'husary') clips.push({ src: 'https://verses.quran.com/Husary/mp3/001001.mp3', est });
       return play(clips, onWord);
     },
-    /* one word: the reciter's own voice when timings exist, otherwise Quran.com's word audio */
-    async word(n, v, w, reciterId, onWord) {
+    /* one word: Quran.com's own recording of that word (clearer than a cut from the verse);
+       a cut from the reciter's verse only if that recording is missing. No highlight sweep. */
+    async word(n, v, w, reciterId) {
       const r = Q.RECITER[reciterId] || Q.RECITERS[0];
+      const clips = [{ src: `https://audio.qurancdn.com/wbw/${pad(n)}_${pad(v)}_${pad(w + 1)}.mp3` }];
       const t = await timings(n, r.id);
       const s = t && t[v] && t[v].seg && t[v].seg.find(x => x.w === w);
-      const wbw = { src: `https://audio.qurancdn.com/wbw/${pad(n)}_${pad(v)}_${pad(w + 1)}.mp3`, est: [1] };
-      const cb = onWord ? (i, p) => onWord(i < 0 ? -1 : w, p) : null;
-      if (s && t[v].url) return play([{ src: t[v].url, start: Math.max(0, s.start - 40) / 1000, end: (s.end + 60) / 1000, seg: [{ w: 0, start: s.start, end: s.end }] }, wbw], cb);
-      return play([wbw], cb);
+      if (s && t[v].url) clips.push({ src: t[v].url, start: Math.max(0, s.start - 40) / 1000, end: (s.end + 60) / 1000 });
+      return play(clips);
     },
     /* 'word' when Quran.com timings were found for this surah, 'verse' otherwise, null before the first try */
     following(n, reciterId) {

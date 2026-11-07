@@ -20,6 +20,12 @@
     const goal = h('input', { id: 'set-goal', class: 'input num', type: 'number', min: 20, max: 2000, step: 10, value: set.goal, onchange: e => { const v = Math.max(20, Math.min(2000, Number(e.target.value) || 150)); e.target.value = v; Q.store.setSetting('goal', v); } });
     const ram = h('input', { id: 'set-ramadan', class: 'input', type: 'date', value: set.ramadan || '', onchange: e => { Q.store.setSetting('ramadan', e.target.value); Q.toast(e.target.value ? 'Ramadan date saved' : 'Using the calendar date'); } });
 
+    const remind = h('div', { class: 'seg', role: 'group', 'aria-label': 'Revision reminders' }, [[true, 'On'], [false, 'Off']].map(([v, label]) =>
+      h('button', { type: 'button', 'aria-pressed': String(Q.store.remindOn() === v), onclick: e => {
+        Q.store.setQPref('remind', v);
+        remind.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === e.currentTarget)));
+      } }, label)));
+
     /* look */
     const fontPreview = h('div', { class: 'frame', style: { padding: '8px 18px', textAlign: 'center' } });
     const renderPreview = () => {
@@ -61,6 +67,8 @@
           field('Iqra book you are on', 'set-book', book),
           field('Where you are in it', 'set-page', page, 'A note for yourself, like the page your teacher left you on.'),
           field('Daily goal (letters read)', 'set-goal', goal, 'A row of 4 letters counts as 4. 150 is about 10 minutes.'),
+          h('div', { class: 'field' }, h('span', { class: 'label' }, 'Revision reminders'), remind,
+            h('p', { class: 'small muted' }, 'Suggests surahs to recite again after a few days, then a week, then a month. Off: memorize line by line and revise whenever you like.')),
           field('First day of fasting (optional)', 'set-ramadan', ram,
             `Already filled in for you: Ramadan begins at sunset on ${Q.fmtDate(auto.night, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} and the first fast is ${Q.fmtDate(auto.fast, { weekday: 'long', month: 'long', day: 'numeric' })}. Only change this if your mosque announces a different day.`)),
         h('section', { class: 'card stack' },

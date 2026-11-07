@@ -222,8 +222,8 @@
 
     root.append(h('div', { class: 'page' },
       h('div', { class: 'page-head' },
-        h('div', null, h('h1', null, 'Letters'),
-          h('p', null, 'All 28 letters plus hamza, grouped by shape. Letters in the same row share a body and differ only by their dots. Read each row from right to left.')),
+        h('div', { class: 'stack', style: { gap: '12px' } }, h('h1', null, 'Letters'), Q.sectionTabs(Q.LETTER_TABS, 'letters'),
+          h('p', { class: 'small muted' }, 'Grouped by shape: letters in a row differ only by their dots. Tap one to see it up close.')),
         h('div', { class: 'field' }, h('span', { class: 'label' }, 'Transliteration'), Q.schemeSwitch(() => { renderGroups(); renderDetail(); renderGuide(); }))),
       h('div', { class: 'letters-layout' }, h('section', { class: 'card' }, groupsEl), detailEl),
       guide,

@@ -14,7 +14,7 @@
       settings: { goal: 150, font: 'hafs', theme: 'system', ramadan: '', iqraBook: 1, iqraPage: '', translit: 'en' },
       practice: {
         mode: 'sounds', groups: Q.GROUPS.map(g => g.id), marks: ['a'], rowLen: 4, words: 2,
-        rounds: 12, focusWeak: true, lookalikes: true, showKeys: true, hideSetup: false, focus: 'all',
+        rounds: 12, focusWeak: true, lookalikes: true, showKeys: true, showSetup: false, focus: 'all',
       },
       letters: {},     // id -> { n, w, last, hist }
       modes: {},       // mode -> { n, w }
@@ -31,7 +31,8 @@
     return {
       list: [],        // surahs you are learning, most recent first
       v: {},           // "surah:verse" -> { s: stage 1-6, due: YYYY-MM-DD, n: reviews, miss: lapses, last }
-      prefs: { text: 'translit', meaning: false, trans: true, reciter: 'husary', speed: 1, repeat: 1, gap: false, loop: false, basmala: true, transLang: 'en' },
+      prefs: { text: 'translit', meaning: false, trans: true, reciter: 'husary', speed: 1, repeat: 1, gap: false, loop: false, basmala: true, transLang: 'en', remind: true },
+      done: {},        // surah -> { at } when you said "I've memorized this surah"
       last: null,      // { n, tab, verse }
     };
   }
@@ -45,6 +46,9 @@
     const q = saved.quran || {};
     out.quran = Object.assign(freshQuran(), q);
     out.quran.prefs = Object.assign(freshQuran().prefs, q.prefs || {});
+    out.quran.done = Object.assign({}, q.done || {});
+    // before line-by-line memorizing, a verse only counted after two spaced reviews; count what you already learned
+    if (!out.quran.memV1) { Object.values(out.quran.v).forEach(r => { if (!r.mem) r.mem = r.last || Date.now(); }); out.quran.memV1 = true; }
     return out;
   }
 
@@ -191,18 +195,49 @@
     qRemove(n) { S.quran.list = S.quran.list.filter(x => x !== n); store.save(); },
     qSetLast(last) { S.quran.last = Object.assign({}, S.quran.last, last); store.save(); },
     qVerse(key) { return S.quran.v[key] || null; },
+    /* Memorized means you learned it (line by line) or said so. Revision keeps it fresh;
+       a slip in revision brings the verse back sooner but never takes "memorized" away. */
     qStatus(key) {
       const r = S.quran.v[key];
       if (!r) return 'new';
-      return r.s >= 3 ? 'memorized' : 'learning';
+      return r.mem || r.s >= 3 ? 'memorized' : 'learning';
     },
-    /* first time a verse is learned in the coach */
+    /* a verse finished in the Learn coach */
     qLearned(key) {
-      if (!S.quran.v[key]) {
-        S.quran.v[key] = { s: 1, due: Q.dayKey(Q.addDays(new Date(), 1)), n: 0, miss: 0, last: Date.now() };
-        store._day().q = (store._day().q || 0) + 1;
-        store.save();
+      const r = S.quran.v[key] || (S.quran.v[key] = { s: 1, due: Q.dayKey(Q.addDays(new Date(), 1)), n: 0, miss: 0, last: Date.now() });
+      if (!r.mem) { r.mem = Date.now(); store._day().q = (store._day().q || 0) + 1; }
+      S.quran.list = [Number(key.split(':')[0]), ...S.quran.list.filter(x => x !== Number(key.split(':')[0]))];
+      store.save();
+    },
+    /* "I've memorized this surah": every verse counts, first revision in a few days */
+    qMemorizeSurah(n, count) {
+      for (let v = 1; v <= count; v++) {
+        const key = n + ':' + v;
+        const r = S.quran.v[key] || (S.quran.v[key] = { s: 2, due: Q.dayKey(Q.addDays(new Date(), 3)), n: 0, miss: 0, last: Date.now() });
+        if (!r.mem) r.mem = Date.now();
       }
+      S.quran.done[n] = { at: Date.now() };
+      S.quran.list = [n, ...S.quran.list.filter(x => x !== n)];
+      store.save();
+    },
+    qUnmemorizeSurah(n, count) {
+      for (let v = 1; v <= count; v++) delete S.quran.v[n + ':' + v];
+      delete S.quran.done[n];
+      store.save();
+    },
+    qDone(n) { return S.quran.done[n] || null; },
+    remindOn() { return S.quran.prefs.remind !== false; },
+    /* surahs with verses due for revision, with how many and when you last recited them */
+    qReviseList(onDay = Q.dayKey()) {
+      if (!store.remindOn()) return [];
+      const by = {};
+      for (const [k, r] of Object.entries(S.quran.v)) {
+        const n = Number(k.split(':')[0]);
+        const g = by[n] || (by[n] = { n, due: 0, last: 0 });
+        if (r.due <= onDay) g.due++;
+        g.last = Math.max(g.last, r.last || 0);
+      }
+      return Object.values(by).filter(g => g.due > 0).sort((a, b) => a.last - b.last);
     },
     /* grade a recall: 'again' | 'hard' | 'good' */
     qGrade(key, grade) {
@@ -210,7 +245,7 @@
       r.n++; r.last = Date.now();
       if (grade === 'again') { r.s = 1; r.miss++; r.due = Q.dayKey(Q.addDays(new Date(), 1)); }
       else if (grade === 'hard') { r.s = Math.max(1, r.s); r.due = Q.dayKey(Q.addDays(new Date(), Math.max(1, Math.floor(INTERVALS[r.s] / 2)))); }
-      else { r.s = Math.min(6, r.s + 1); r.due = Q.dayKey(Q.addDays(new Date(), INTERVALS[r.s])); }
+      else { r.s = Math.min(6, r.s + 1); r.due = Q.dayKey(Q.addDays(new Date(), INTERVALS[r.s])); if (!r.mem) r.mem = Date.now(); }
       const d = store._day();
       d.q = (d.q || 0) + 1;
       if (grade === 'again') d.qw = (d.qw || 0) + 1;
@@ -231,14 +266,14 @@
       for (let v = 1; v <= count; v++) {
         const r = S.quran.v[n + ':' + v];
         if (!r) continue;
-        if (r.s >= 3) mem++; else learning++;
+        if (r.mem || r.s >= 3) mem++; else learning++;
         if (r.due <= today) due++;
       }
       return { mem, learning, fresh: count - mem - learning, due, count };
     },
     qTotals() {
       const all = Object.values(S.quran.v);
-      return { learned: all.length, memorized: all.filter(r => r.s >= 3).length, due: store.qDue().length };
+      return { learned: all.length, memorized: all.filter(r => r.mem || r.s >= 3).length, due: store.qDue().length };
     },
 
     streak() {

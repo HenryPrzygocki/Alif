@@ -101,10 +101,7 @@
       const t = tok = makeRun();
       try {
         for (let k = 0; k < times; k++) {
-          await Q.audio.word(doc.n, cur.v, cur.i, prefs().reciter, (w, p) => {
-            highlightWord(Q.$('#view'), cur.v, w, p);
-            const big = el.querySelector('.qw'); if (big) { big.classList.toggle('now', w >= 0); big.style.setProperty('--p', p.toFixed(3)); }
-          });
+          await Q.audio.word(doc.n, cur.v, cur.i, prefs().reciter);
           if (t.stopped) return;
           if (k < times - 1) await Q.wait(Math.round(Q.audio.lastDuration() * 1000 * 1.6 + 900), t);
           if (t.stopped) return;
@@ -175,21 +172,18 @@
         h('b', null, meta.name),
         h('span', { class: 'small muted' }, `${Q.quran.metaName(meta)} · ${meta.verses} verses`),
         segBar(sum),
-        h('span', { class: 'small' }, `${sum.mem} of ${sum.count} memorized`, sum.due ? h('span', { class: 'qchip due' }, sum.due + ' due') : null));
+        h('span', { class: 'small' }, sum.mem === sum.count ? '✓ Memorized' : `${sum.mem} of ${sum.count} memorized`));
     }
 
     function render(index) {
       const list = store().state.quran.list.map(n => index.find(x => x.n === n)).filter(Boolean);
-      const due = store().qDue();
-      const next = store().qNextDue();
-
-      const reviewCard = h('section', { class: 'card review-cta' + (due.length ? ' has-due' : '') },
+      const revise = store().qReviseList();
+      const memorizedAny = Object.keys(store().state.quran.v).length > 0;
+      const reviewCard = !memorizedAny ? null : h('section', { class: 'card review-cta' + (revise.length ? ' has-due' : '') },
         h('div', { class: 'stack', style: { gap: '4px' } },
-          h('div', { class: 'eyebrow' }, 'Review'),
-          h('h2', null, due.length ? `${due.length} ${due.length === 1 ? 'verse' : 'verses'} to review today` : 'Nothing to review today'),
-          h('p', { class: 'small muted' }, due.length ? 'Say each one from memory, then check yourself. About ' + Math.max(1, Math.round(due.length * 0.4)) + ' min.'
-            : next ? `Next review: ${Q.fmtDate(Q.parseDay(next), { weekday: 'long', month: 'short', day: 'numeric' })}.` : 'Learn a verse in a surah and it will come back here on a schedule.')),
-        due.length ? h('a', { class: 'btn primary lg', href: '#review' }, 'Start review') : null);
+          h('b', null, revise.length ? `${revise.length} ${revise.length === 1 ? 'surah' : 'surahs'} to revise` : 'Revise'),
+          h('span', { class: 'small muted' }, 'Recite what you have memorized, so it stays.')),
+        h('a', { class: 'btn' + (revise.length ? ' primary' : ''), href: '#review' }, 'Revise'));
 
       const mine = list.length
         ? h('section', { class: 'stack' }, h('h2', null, 'Your surahs'), h('div', { class: 'scard-grid' }, list.map(card)))
@@ -224,7 +218,7 @@
       root.replaceChildren(h('div', { class: 'page quran-page' },
         h('div', { class: 'page-head' }, h('div', null,
           h('h1', null, 'Surahs'),
-          h('p', null, 'Memorize short surahs by ear and by heart. Listen to Al-Ḥuṣarī, learn one verse at a time, then test yourself. Verses you learn come back for review on a schedule, so they stick.'))),
+          h('p', null, 'Listen, learn one line at a time, then test yourself.'))),
         reviewCard,
         mine,
         h('section', { class: 'card stack' },
@@ -252,23 +246,53 @@
       const tabsEl = h('div', { class: 'qtabs', role: 'tablist' });
       const bar = h('div', { class: 'card qdisplay' });
       const body = h('div', { class: 'qbody' });
-      const barWrap = h('details', { class: 'qdisplay-details', open: window.innerWidth > 760 }, h('summary', null, 'Display and audio settings'), bar);
+      const barWrap = h('details', { class: 'qdisplay-details' }, h('summary', null, 'Display and reciter'), bar);
       root.replaceChildren(h('div', { class: 'page quran-page' }, head, tabsEl, barWrap, body));
+
+      /* your own recitation of a surah you memorized, kept in this browser */
+      let recorder = null, recTimer = null, recStart = 0, hasKeep = false;
+      const keepKey = 'surah:' + n;
+      Q.voice.has(keepKey).then(x => { hasKeep = x; renderHead(); }).catch(() => {});
+      async function toggleRecord() {
+        if (recorder && recorder.recording) {
+          const blob = await recorder.stop(); clearInterval(recTimer); recorder = null;
+          if (blob && blob.size) { await Q.voice.save(keepKey, blob); hasKeep = true; const d = store().qDone(n); if (d) { d.rec = Date.now(); store().save(); } Q.toast('Saved. Mā shāʾ Allāh'); }
+          renderHead(); return;
+        }
+        try { Q.audio.stop(); recorder = Q.voice.recorder(); await recorder.start(); }
+        catch (e) { recorder = null; Q.toast('Microphone not allowed. Check the browser’s site settings.'); return; }
+        recStart = Date.now(); renderHead();
+        recTimer = setInterval(() => { const el = head.querySelector('.rec-time'); if (el) el.textContent = Q.fmtDuration ? Q.fmtDuration(Date.now() - recStart) : Math.round((Date.now() - recStart) / 1000) + 's'; }, 500);
+      }
+      cleanup.push(() => { clearInterval(recTimer); if (recorder) recorder.dispose(); });
 
       function renderHead() {
         const sum = store().qSummary(n, count);
-        const inList = store().state.quran.list.includes(n);
+        const done = store().qDone(n) || (sum.mem === count ? { at: 0 } : null);
+        const recording = !!(recorder && recorder.recording);
+        const mark = () => {
+          store().qMemorizeSurah(n, count);
+          Q.toast(`Mā shāʾ Allāh! ${doc.name} is memorized`);
+          renderHead(); if (tab === 'learn') renderBody(true);
+        };
+        const state = done
+          ? h('div', { class: 'surah-progress done' },
+            h('span', { class: 'mem-badge' }, '✓ Memorized', done.at ? h('span', { class: 'small' }, ' · ' + Q.fmtDate(new Date(done.at), { month: 'short', day: 'numeric' })) : null),
+            Q.voice.canRecord ? h('div', { class: 'row', style: { gap: '6px', justifyContent: 'flex-end' } },
+              hasKeep && !recording ? h('button', { class: 'btn sm', type: 'button', onclick: () => { Q.audio.stop(); Q.voice.play(keepKey); } }, '▶ Your recitation') : null,
+              h('button', { class: 'btn sm' + (recording ? ' danger' : ' ghost'), type: 'button', onclick: toggleRecord },
+                recording ? ['■ Stop ', h('span', { class: 'rec-time' }, '0s')] : hasKeep ? '● Record again' : '● Record yourself reciting it')) : null)
+          : h('div', { class: 'surah-progress' },
+            segBar(sum),
+            h('span', { class: 'small' }, `${sum.mem} of ${count} verses memorized`),
+            h('button', { class: 'btn sm', type: 'button', onclick: mark }, 'I’ve memorized this surah'));
         head.replaceChildren(
           h('a', { class: 'back', href: '#surahs' }, '← All surahs'),
           h('div', { class: 'surah-title' },
             h('div', null,
               h('h1', null, doc.name, h('span', { class: 'ar title-ar' }, doc.ar)),
-              h('p', { class: 'muted' }, `${Q.quran.name(doc)} · ${count} verses · revealed in ${doc.place === 'meccan' ? 'Makkah' : 'Madinah'}`)),
-            h('div', { class: 'surah-progress' },
-              segBar(sum),
-              h('span', { class: 'small' }, `${sum.mem} memorized · ${sum.learning} learning · ${sum.fresh} new`),
-              h('button', { class: 'btn ghost sm', type: 'button', onclick: () => { inList ? store().qRemove(n) : store().qAdd(n); renderHead(); } },
-                inList ? '✓ In your surahs' : '+ Add to your surahs'))));
+              h('p', { class: 'muted' }, `${Q.quran.name(doc)} · ${count} verses`)),
+            state));
       }
 
       function renderTabs() {
@@ -669,7 +693,7 @@
         best[id] ? h('span', { class: 'small' }, `Last time: ${Q.pct(best[id].score)} · ${Q.fmtDate(new Date(best[id].t), { month: 'short', day: 'numeric' })}`) : null);
       body.replaceChildren(
         h('div', { class: 'tcards' },
-          card('recall', 'Say it from memory', 'self', 'Each verse starts hidden. Say it, reveal it, be honest. This sets when each verse comes back for review.'),
+          card('recall', 'Say it from memory', 'self', 'Each verse starts hidden. Say it, reveal it, be honest.'),
           card('order', 'Put the words in order', 'auto', 'The words of each verse are shuffled. Tap them in the right order.'),
           card('next', 'What comes next?', 'auto', count < 3 ? 'Needs a surah with at least 3 verses.' : 'You see one verse. Pick how the next one starts.', count < 3)));
     }
@@ -855,7 +879,7 @@
         if (first) { const tr = Q.quran.translit(doc, v); first.classList.remove('blank'); first.classList.add('cue'); first.querySelector('.qw-ar').textContent = Q.quran.cue(verse.words[0], true); const t = first.querySelector('.qw-tr'); if (t) t.textContent = Q.quran.cue(tr[0], false); }
       } }, 'Hint: first letter');
       const verseEl = h('div', { class: 'qverse big recall-verse', 'data-verse': v }, verseBadge(v, { tabindex: -1 }),
-        h('div', { class: 'qverse-main' }, wordLine(doc, v, { size: 'lg', hide, onWord: (w) => { if (revealed) Q.audio.word(n, v, w, prefs().reciter, (x, p) => highlightWord(body, v, x, p)).catch(audioProblem); } }),
+        h('div', { class: 'qverse-main' }, wordLine(doc, v, { size: 'lg', hide, onWord: (w) => { if (revealed) Q.audio.word(n, v, w, prefs().reciter).catch(audioProblem); } }),
           revealed && prefs().trans ? h('p', { class: 'qtrans' }, Q.quran.translation(verse)) : null));
       const grade = g => {
         stopRun();
@@ -920,42 +944,46 @@
     loading(root);
     Q.quran.loadIndex().then(index => { if (alive) render(index); }).catch(e => alive && failed(root, e));
 
+    /* Revise (murājaʿah): recite whole surahs you know, the way you would to a teacher */
     function render(index) {
-      const due = store().qDue();
-      const next = store().qNextDue();
       const body = h('div', { class: 'qbody' });
-      const groups = {};
-      due.forEach(k => { const s = Number(k.split(':')[0]); (groups[s] = groups[s] || []).push(k); });
+      const due = new Map(store().qReviseList().map(g => [g.n, g]));
+      const mine = [...new Set(Object.keys(store().state.quran.v).map(k => Number(k.split(':')[0])))]
+        .map(n => index.find(x => x.n === n)).filter(Boolean)
+        .map(meta => ({ meta, sum: store().qSummary(meta.n, meta.verses), due: due.get(meta.n) }))
+        .filter(x => x.sum.mem > 0)
+        .sort((a, b) => (b.due ? 1 : 0) - (a.due ? 1 : 0) || a.meta.n - b.meta.n);
+      const lastTime = n => {
+        const t = Math.max(0, ...Object.entries(store().state.quran.v).filter(([k]) => k.startsWith(n + ':')).map(([, r]) => r.last || 0));
+        if (!t) return '';
+        const d = Q.daysBetween(new Date(t), new Date());
+        return d <= 0 ? 'recited today' : d === 1 ? 'recited yesterday' : `recited ${d} days ago`;
+      };
+      const recite = (meta) => {
+        Q.quran.load(meta.n).then(doc => {
+          session = recallRun(doc.verses.map(v => v.key), body, r => { run = r; }, () => {}, () => { session = null; },
+            () => { session = null; render(index); }, { title: 'Revise · ' + meta.name, exitLabel: 'Stop', doneLabel: 'Done' });
+        });
+      };
+      body.append(mine.length
+        ? h('div', { class: 'card stack revise-list' }, mine.map(({ meta, sum, due: d }) => h('div', { class: 'revise-row' + (d ? ' due' : '') },
+          h('span', { class: 'srow-name' }, h('b', null, meta.name),
+            h('span', { class: 'small muted' }, [sum.mem === sum.count ? 'Memorized' : `${sum.mem} of ${sum.count} verses`, lastTime(meta.n)].filter(Boolean).join(' · '))),
+          d ? h('span', { class: 'qchip due' }, 'Time to revise') : null,
+          h('span', { class: 'ar sname' }, meta.ar),
+          h('button', { class: 'btn' + (d ? ' primary' : ''), type: 'button', onclick: () => recite(meta) }, 'Recite'))))
+        : h('div', { class: 'frame lstage' }, h('div', { class: 'summary' },
+          h('h2', null, 'Nothing to revise yet'),
+          h('p', { class: 'muted' }, 'Surahs you memorize show up here, so you can recite them again now and then.'),
+          h('a', { class: 'btn primary', href: '#surahs' }, 'Go to surahs'))));
       root.replaceChildren(h('div', { class: 'page quran-page' },
         h('div', { class: 'page-head' }, h('div', null,
-          h('h1', null, 'Review'),
-          h('p', null, 'Verses come back after a day, then 3 days, a week, two weeks, a month. Say each one from memory, reveal it, and grade yourself honestly. Missed ones come back sooner.'))),
-        !due.length ? null : h('details', { class: 'qdisplay-details', open: window.innerWidth > 760 }, h('summary', null, 'Display settings'),
-          h('div', { class: 'card qdisplay' }, displayBar(() => { if (session) session.redraw(); else render(index); }))),
+          h('h1', null, 'Revise'),
+          h('p', null, 'Recite a surah you know from memory, then check each verse. ' + (store().remindOn() ? 'Ones you have not recited for a while are marked.' : '')))),
         body));
-      if (!due.length) {
-        body.append(h('div', { class: 'frame lstage' }, h('div', { class: 'summary' },
-          h('h2', null, 'All caught up'),
-          h('p', { class: 'muted' }, next ? `Next review: ${Q.fmtDate(Q.parseDay(next), { weekday: 'long', month: 'long', day: 'numeric' })}.` : 'Learn a few verses in a surah and they will show up here.'),
-          h('a', { class: 'btn primary', href: '#surahs' }, 'Go to surahs'))));
-        return;
-      }
-      body.append(h('div', { class: 'card stack' },
-        h('h2', null, `${due.length} ${due.length === 1 ? 'verse' : 'verses'} due`),
-        h('div', { class: 'chips' }, Object.entries(groups).map(([s, ks]) => {
-          const meta = index.find(x => x.n === Number(s));
-          return h('span', { class: 'chip' }, h('b', null, meta ? meta.name : 'Surah ' + s), `${ks.length}`);
-        })),
-        h('div', { class: 'row' }, h('button', { class: 'btn primary lg', type: 'button', onclick: () => {
-          session = recallRun(due, body, r => { run = r; }, () => {}, () => { session = null; }, () => { session = null; render(index); }, { title: 'Review', exitLabel: 'Stop review', doneLabel: 'Done' });
-        } }, 'Start review', h('kbd', null, 'Space')))));
-      const onKey = e => { if (e.key === ' ' && body.querySelector('.btn.primary.lg') && !body.querySelector('.recall-verse')) { e.preventDefault(); body.querySelector('.btn.primary.lg').click(); document.removeEventListener('keydown', onKey); } };
-      document.addEventListener('keydown', onKey);
-      reviewKey = onKey;
     }
-    let reviewKey = null;
     let session = null;
-    return () => { alive = false; if (run) run.cancel(); if (recallCleanup) recallCleanup(); if (reviewKey) document.removeEventListener('keydown', reviewKey); Q.audio.stop(); };
+    return () => { alive = false; if (run) run.cancel(); if (recallCleanup) recallCleanup(); Q.audio.stop(); };
   };
 
   /* ---------------- record yourself ---------------- */

@@ -32,17 +32,14 @@
     const stageTop = h('div', { class: 'stage-top' });
     const stageEl = h('div', { class: 'frame stage' });
     const actionsEl = h('div', { class: 'stage-actions' });
-    const layout = h('div', { class: 'practice' + (cfg.hideSetup ? ' focus' : '') }, setupEl, h('div', { class: 'stage-wrap' }, stageTop, stageEl, actionsEl));
+    const layout = h('div', { class: 'practice' + (!cfg.showSetup ? ' focus' : '') }, setupEl, h('div', { class: 'stage-wrap' }, stageTop, stageEl, actionsEl));
     root.append(h('div', { class: 'page practice-page' },
-      h('div', { class: 'page-head' },
-        h('div', null,
-          h('h1', null, 'Letter practice'),
-          h('p', null, 'Read-aloud modes: say each letter from right to left, reveal, and click what you missed. Quiz modes: pick the answer and the site checks it.'))),
+      h('div', { class: 'page-head' }, h('h1', null, 'Letters'), Q.sectionTabs(Q.LETTER_TABS, 'practice')),
       layout));
 
     function toggleSetup() {
-      store.setPractice('hideSetup', !cfg.hideSetup);
-      layout.classList.toggle('focus', cfg.hideSetup);
+      store.setPractice('showSetup', !cfg.showSetup);
+      layout.classList.toggle('focus', !cfg.showSetup);
       if (session && session.over) renderSummaryTop(); else if (round) renderTop();
     }
 
@@ -323,8 +320,8 @@
     }
 
     function optionsButton() {
-      return h('button', { class: 'btn ghost sm', type: 'button', 'aria-expanded': String(!cfg.hideSetup), 'aria-controls': 'practice-options', onclick: toggleSetup },
-        cfg.hideSetup ? 'Show options' : 'Hide options', h('kbd', null, 'O'));
+      return h('button', { class: 'btn ghost sm', type: 'button', 'aria-expanded': String(!!cfg.showSetup), 'aria-controls': 'practice-options', onclick: toggleSetup },
+        cfg.showSetup ? 'Hide settings' : 'Settings', h('kbd', null, 'O'));
     }
 
     function renderTop() {

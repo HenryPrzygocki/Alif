@@ -6,19 +6,18 @@
   const icon = (d) => s('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.7', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' },
     ...d.map(p => s('path', { d: p })));
 
-  /* Navigation, in three groups so each part of the site is one click away */
+  /* Four places, nothing hidden behind a menu. Other pages open from inside them:
+     Revise from Today and Surahs, the alphabet and keyboard from Letters, Setup from the gear. */
+  const GEAR = ['M12 9.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6z', 'M19.4 13.5l1.6 1.2-1.8 3.1-1.9-.7a7 7 0 0 1-1.6.9l-.3 2H10.6l-.3-2a7 7 0 0 1-1.6-.9l-1.9.7-1.8-3.1 1.6-1.2a7 7 0 0 1 0-1.9L5 10.3l1.8-3.1 1.9.7a7 7 0 0 1 1.6-.9l.3-2h3.6l.3 2a7 7 0 0 1 1.6.9l1.9-.7 1.8 3.1-1.6 1.2a7 7 0 0 1 0 1.9z'];
   const ROUTES = [
-    { id: 'today', label: 'Today', primary: true, view: () => Q.views.today, icon: ['M4 11l8-7 8 7', 'M6 9.5V20h12V9.5', 'M10 20v-5h4v5'] },
-    { group: 'Quran' },
-    { id: 'surahs', label: 'Surahs', primary: true, view: () => Q.views.surahs, icon: ['M5 4.5h9.5a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z', 'M8.5 9h6M8.5 12.5h6M8.5 16h3.5'] },
-    { id: 'review', label: 'Review', primary: true, view: () => Q.views.review, icon: ['M20 12a8 8 0 1 1-2.6-5.9', 'M20 4v4.5h-4.5', 'M9 12.5l2.2 2.2L15.5 10'], badge: () => Q.store.qDue().length },
-    { group: 'Alphabet' },
-    { id: 'practice', label: 'Letter practice', short: 'Practice', primary: true, view: () => Q.views.practice, icon: ['M8 5.5v13l11-6.5z'] },
-    { id: 'letters', label: 'Letters', view: () => Q.views.letters, icon: ['M4 5h7v6H4z', 'M13 5h7v6h-7z', 'M4 13h7v6H4z', 'M13 13h7v6h-7z'] },
-    { id: 'keyboard', label: 'Keyboard', view: () => Q.views.keyboard, icon: ['M3 7h18v11H3z', 'M7 11h.01M11 11h.01M15 11h.01M7 14.5h10'] },
-    { group: 'You' },
-    { id: 'progress', label: 'Progress', view: () => Q.views.progress, icon: ['M4 20V10', 'M10 20V4', 'M16 20v-7', 'M21 20H3'] },
-    { id: 'setup', label: 'Setup', view: () => Q.views.setup, icon: ['M4 7h10M18 7h2M4 17h4M12 17h8', 'M16 5v4M10 15v4'] },
+    { id: 'today', label: 'Today', nav: true, view: () => Q.views.today, icon: ['M4 11l8-7 8 7', 'M6 9.5V20h12V9.5', 'M10 20v-5h4v5'], badge: () => Q.store.qReviseList().length },
+    { id: 'surahs', label: 'Surahs', nav: true, view: () => Q.views.surahs, icon: ['M5 4.5h9.5a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z', 'M8.5 9h6M8.5 12.5h6M8.5 16h3.5'] },
+    { id: 'practice', label: 'Letters', nav: true, view: () => Q.views.practice, icon: ['M4 5h7v6H4z', 'M13 5h7v6h-7z', 'M4 13h7v6H4z', 'M13 13h7v6h-7z'] },
+    { id: 'progress', label: 'Progress', nav: true, view: () => Q.views.progress, icon: ['M4 20V10', 'M10 20V4', 'M16 20v-7', 'M21 20H3'] },
+    { id: 'review', label: 'Revise', parent: 'surahs', view: () => Q.views.review },
+    { id: 'letters', label: 'Alphabet', parent: 'practice', view: () => Q.views.letters },
+    { id: 'keyboard', label: 'Keyboard', parent: 'practice', view: () => Q.views.keyboard },
+    { id: 'setup', label: 'Setup', parent: 'setup', view: () => Q.views.setup },
   ];
   // pages that live under a nav item: #surah-112 → Surahs
   const SUB_ROUTES = [
@@ -26,43 +25,30 @@
   ];
 
   const nav = Q.$('#nav');
-  const MORE_ICON = ['M4 7h16', 'M4 12h16', 'M4 17h16'];
-  /* On phones the rail becomes a bottom bar with the main pages; the rest sit under "More". */
-  function drawNav() {
-    const secondary = ROUTES.some(r => r.id === currentId && !r.primary);
-    nav.replaceChildren(...ROUTES.map(r => r.group
-      ? h('div', { class: 'nav-group' }, r.group)
-      : h('a', { href: '#' + r.id, 'data-route': r.id, class: (r.primary ? 'primary' : 'secondary') + (r.short ? ' has-short' : '') },
-        icon(r.icon), h('span', { class: 'lbl' }, r.label), r.short ? h('span', { class: 'lbl-short' }, r.short) : null,
-        r.badge && r.badge() ? h('span', { class: 'nav-badge', title: 'Due today' }, r.badge()) : null)),
-    h('button', { type: 'button', class: 'nav-more', 'aria-expanded': String(!sheet.hidden), 'aria-controls': 'more-sheet', 'aria-current': secondary ? 'page' : null, onclick: () => (sheet.hidden ? openSheet() : closeSheet()) },
-      icon(MORE_ICON), h('span', null, 'More')));
-  }
-  const sheet = h('div', { id: 'more-sheet', class: 'more-sheet', hidden: true });
-  document.body.append(sheet);
-  function openSheet() {
-    const r = Q.ramadan();
-    sheet.replaceChildren(
-      h('div', { class: 'more-backdrop', onclick: closeSheet }),
-      h('div', { class: 'more-panel', role: 'dialog', 'aria-label': 'More pages' },
-        h('div', { class: 'more-links' }, ROUTES.filter(x => x.id && !x.primary).map(x =>
-          h('a', { href: '#' + x.id, 'aria-current': x.id === currentId ? 'page' : null, onclick: closeSheet }, icon(x.icon), h('span', null, x.label)))),
-        h('p', { class: 'more-foot' }, r.phase === 'during' ? `Day ${r.dayOf} of Ramadan` : r.phase === 'tonight' ? 'Ramadan begins tonight at sunset' : `${r.days} days until Ramadan · ${Q.fmtDate(r.night, { weekday: 'short', month: 'short', day: 'numeric' })}`)));
-    sheet.hidden = false;
-    Q.refreshNav();
-  }
-  function closeSheet() { if (sheet.hidden) return; sheet.hidden = true; Q.refreshNav(); }
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
   let currentId = null;
+  function drawNav() {
+    nav.replaceChildren(...ROUTES.filter(r => r.nav).map(r =>
+      h('a', { href: '#' + r.id, 'data-route': r.id, 'aria-current': r.id === currentId ? 'page' : null },
+        icon(r.icon), h('span', { class: 'lbl' }, r.label),
+        r.badge && r.badge() ? h('span', { class: 'nav-badge', title: 'Surahs to revise' }, r.badge()) : null)));
+    document.querySelectorAll('.gear').forEach(g => g.setAttribute('aria-current', currentId === 'setup' ? 'page' : 'false'));
+  }
+  document.querySelectorAll('.gear').forEach(g => g.replaceChildren(icon(GEAR)));
   drawNav();
+
+  /* the small tab row at the top of a section with more than one page */
+  Q.sectionTabs = function (items, current) {
+    return h('nav', { class: 'subtabs', 'aria-label': 'Section' }, items.map(([id, label]) =>
+      h('a', { href: '#' + id, 'aria-current': id === current ? 'page' : null }, label)));
+  };
+  Q.LETTER_TABS = [['practice', 'Practice'], ['letters', 'Alphabet'], ['keyboard', 'Keyboard']];
 
   let cleanup = null;
   function render() {
-    closeSheet();
     const id = (location.hash || '').replace(/^#/, '') || 'today';
     let route = ROUTES.find(r => r.id === id && !r.group);
     let viewFn, navId, title;
-    if (route) { viewFn = route.view(); navId = route.id; title = route.label; }
+    if (route) { viewFn = route.view(); navId = route.parent || route.id; title = route.label; }
     else {
       const sub = SUB_ROUTES.map(x => ({ x, m: id.match(x.re) })).find(y => y.m);
       if (sub) { viewFn = sub.x.view(sub.m); navId = sub.x.parent; title = sub.x.title(); }
@@ -70,8 +56,6 @@
     }
     currentId = navId;
     drawNav();
-    const active = nav.querySelector(`a[data-route="${navId}"]`);
-    if (active) active.setAttribute('aria-current', 'page');
     if (typeof cleanup === 'function') { try { cleanup(); } catch (e) { console.error(e); } }
     cleanup = null;
     if (Q.audio) Q.audio.stop();
@@ -87,7 +71,7 @@
     document.title = navId === 'today' ? 'Alif' : `${title} · Alif`;
     window.scrollTo(0, 0);
   }
-  Q.refreshNav = () => { drawNav(); const a = nav.querySelector(`a[data-route="${currentId}"]`); if (a) a.setAttribute('aria-current', 'page'); };
+  Q.refreshNav = drawNav;
 
   Q.go = id => { if (location.hash === '#' + id) render(); else location.hash = id; };
 
