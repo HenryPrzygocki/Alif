@@ -13,6 +13,7 @@
   const SHADDA = 'ّ', SUKUN_SILENT = 'ْ', SUKUN = 'ۡ';
   const DAGGER = 'ٰ', HAMZA_ABOVE = 'ٔ', HAMZA_BELOW = 'ٕ';
   const MEEM_HIGH = 'ۢ', MEEM_LOW = 'ۭ', SMALL_WAW = 'ۥ', SMALL_YAA = 'ۦ', ROUND_ZERO = '۠';
+  const SMALL_HIGH_YAA = '\u06E7', SMALL_HIGH_NOON = '\u06E8';
 
   const isMark = ch => /[ً-ٰٟۖ-ۭ]/.test(ch);
 
@@ -66,14 +67,23 @@
       const restIsSeat = U.slice(i + 1).every(x => x.b === 'ا' || x.b === 'ى');
       if ((has(MEEM_HIGH) || has(MEEM_LOW)) && v && restIsSeat) tan = 'm';     // tanween iqlab
       const shad = has(SHADDA);
-      const suk = has(SUKUN) || (has(SUKUN_SILENT) && u.b !== 'ا' && u.b !== 'و');
-      const silent = (has(SUKUN_SILENT) && (u.b === 'ا' || u.b === 'و')) || has(ROUND_ZERO);
+      const suk = has(SUKUN);
+      const silent = has(SUKUN_SILENT) || has(ROUND_ZERO);
       const dag = has(DAGGER);
       let b = u.b;
-      if (silent) continue;
+      if (silent) {
+        // an alif with the small circle is read only when you stop on it (ٱلظُّنُونَا۠)
+        if (has(ROUND_ZERO) && b === 'ا' && i === U.length - 1 && lastTok()) lastTok().waqfA = true;
+        continue;
+      }
       if (has(HAMZA_ABOVE) || has(HAMZA_BELOW)) b = 'ء';
 
-      if (b === 'ـ') { if (dag) lengthen(T, 'a'); continue; }
+      if (b === 'ـ') {
+        if (dag) lengthen(T, 'a');
+        if (has(SMALL_HIGH_YAA)) lengthen(T, 'i');                      // ٱلنَّبِيِّـۧنَ: nabiyyīn
+        if (has(SMALL_HIGH_NOON)) T.push({ c: 'noon', v: null });        // نُـۨجِي: nunjī
+        continue;
+      }
       if (b === 'ٱ') {
         if (i === 0 && first) {
           const helper = U[1] && U[1].b === 'ل' ? 'a' : (U[2] && U[2].m.includes(D) ? 'u' : 'i');
@@ -134,6 +144,7 @@
       return;
     }
     if (L.silah) { L.v = null; L.long = false; return; }
+    if (L.waqfA) { L.v = 'a'; L.long = true; return; }
     if (L.v && !L.long) L.v = null;
   }
 
@@ -193,6 +204,21 @@
     // a verse never starts doubled (that shadda belongs to the previous verse's last word)
     if (toks[0] && toks[0][0] && toks[0][0].dbl && toks[0][0].c) toks[0][0].dbl = false;
     if (toks.length) waqf(toks[toks.length - 1]);
-    return toks.map(T => render(T, scheme, true));
+    return toks.map((T, i) => disjoined(words[i], scheme) || render(T, scheme, true));
   };
+
+  /* The disjoined letters that open 29 surahs (الٓمٓ, حمٓ, يسٓ…) are recited by their names */
+  const DISJOINED = {
+    'الم': ['alif', 'laam', 'meem'], 'المص': ['alif', 'laam', 'meem', 'Saad'], 'الر': ['alif', 'laam', 'raa'],
+    'المر': ['alif', 'laam', 'meem', 'raa'], 'كهيعص': ['kaaf', 'haa', 'yaa', 'ayn', 'Saad'], 'طه': ['Taa', 'haa'],
+    'طسم': ['Taa', 'seen', 'meem'], 'طس': ['Taa', 'seen'], 'يس': ['yaa', 'seen'], 'ص': ['Saad'], 'حم': ['Haa', 'meem'],
+    'عسق': ['ayn', 'seen', 'qaaf'], 'ق': ['qaaf'], 'ن': ['noon'],
+  };
+  const SAY_EN = { alif: 'alif', laam: 'lām', meem: 'mīm', Saad: 'ṣād', raa: 'rā', kaaf: 'kāf', haa: 'hā', yaa: 'yā', ayn: 'ʿain', Taa: 'ṭā', seen: 'sīn', Haa: 'ḥā', qaaf: 'qāf', noon: 'nūn' };
+  function disjoined(word, scheme) {
+    const bare = word.replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '');
+    const ids = DISJOINED[bare];
+    if (!ids || !(word.includes('\u0653') || bare === 'طه')) return null;
+    return ids.map(id => scheme === 'pt' && Q.PT && Q.PT[id] ? Q.PT[id].name.toLowerCase() : SAY_EN[id]).join('-');
+  }
 })(window.Q = window.Q || {});

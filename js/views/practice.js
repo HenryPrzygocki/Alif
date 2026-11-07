@@ -34,7 +34,7 @@
     const actionsEl = h('div', { class: 'stage-actions' });
     const layout = h('div', { class: 'practice' + (!cfg.showSetup ? ' focus' : '') }, setupEl, h('div', { class: 'stage-wrap' }, stageTop, stageEl, actionsEl));
     root.append(h('div', { class: 'page practice-page' },
-      h('div', { class: 'page-head' }, h('h1', null, 'Letters'), Q.sectionTabs(Q.LETTER_TABS, 'practice')),
+      h('div', { class: 'page-head' }, h('h1', null, 'Alphabet'), Q.sectionTabs(Q.LETTER_TABS, 'practice')),
       layout));
 
     function toggleSetup() {

@@ -1,7 +1,7 @@
 {
-  "name": "Alif: learn to read the Quran",
+  "name": "Alif: learn and memorize the Quran",
   "short_name": "Alif",
-  "description": "Learn the Arabic letters, then memorize short surahs. Road to Ramadan.",
+  "description": "Read, listen and memorize the Quran, with transliteration and meaning for every word.",
   "start_url": "./#today",
   "scope": "./",
   "display": "standalone",

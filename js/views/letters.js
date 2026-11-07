@@ -222,7 +222,7 @@
 
     root.append(h('div', { class: 'page' },
       h('div', { class: 'page-head' },
-        h('div', { class: 'stack', style: { gap: '12px' } }, h('h1', null, 'Letters'), Q.sectionTabs(Q.LETTER_TABS, 'letters'),
+        h('div', { class: 'stack', style: { gap: '12px' } }, h('h1', null, 'Alphabet'), Q.sectionTabs(Q.LETTER_TABS, 'letters'),
           h('p', { class: 'small muted' }, 'Grouped by shape: letters in a row differ only by their dots. Tap one to see it up close.')),
         h('div', { class: 'field' }, h('span', { class: 'label' }, 'Transliteration'), Q.schemeSwitch(() => { renderGroups(); renderDetail(); renderGuide(); }))),
       h('div', { class: 'letters-layout' }, h('section', { class: 'card' }, groupsEl), detailEl),

@@ -26,6 +26,12 @@
         remind.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === e.currentTarget)));
       } }, label)));
 
+    const countdown = h('div', { class: 'seg', role: 'group', 'aria-label': 'Ramadan countdown' }, [[true, 'Show'], [false, 'Hide']].map(([v, label]) =>
+      h('button', { type: 'button', 'aria-pressed': String((set.countdown !== false) === v), onclick: e => {
+        Q.store.setSetting('countdown', v);
+        countdown.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === e.currentTarget)));
+      } }, label)));
+
     /* look */
     const fontPreview = h('div', { class: 'frame', style: { padding: '8px 18px', textAlign: 'center' } });
     const renderPreview = () => {
@@ -67,6 +73,8 @@
           field('Iqra book you are on', 'set-book', book),
           field('Where you are in it', 'set-page', page, 'A note for yourself, like the page your teacher left you on.'),
           field('Daily goal (letters read)', 'set-goal', goal, 'A row of 4 letters counts as 4. 150 is about 10 minutes.'),
+          h('div', { class: 'field' }, h('span', { class: 'label' }, 'Ramadan countdown'), countdown,
+            h('p', { class: 'small muted' }, 'Days until Ramadan, on Today and in the menu.')),
           h('div', { class: 'field' }, h('span', { class: 'label' }, 'Revision reminders'), remind,
             h('p', { class: 'small muted' }, 'Suggests surahs to recite again after a few days, then a week, then a month. Off: memorize line by line and revise whenever you like.')),
           field('First day of fasting (optional)', 'set-ramadan', ram,

@@ -162,7 +162,7 @@
     loading(root);
     let alive = true;
     Q.quran.loadIndex().then(index => { if (alive) render(index); }).catch(e => alive && failed(root, e));
-    let sort = Q.storage.get('huruf.surahSort', 'short');
+    let sort = Q.storage.get('huruf.surahSort2', 'mushaf');
     let filter = '';
 
     function card(meta) {
@@ -186,10 +186,10 @@
         h('a', { class: 'btn' + (revise.length ? ' primary' : ''), href: '#review' }, 'Revise'));
 
       const mine = list.length
-        ? h('section', { class: 'stack' }, h('h2', null, 'Your surahs'), h('div', { class: 'scard-grid' }, list.map(card)))
+        ? h('section', { class: 'stack' }, h('h2', null, 'Memorizing'), h('div', { class: 'scard-grid' }, list.map(card)))
         : h('section', { class: 'stack' },
-          h('h2', null, 'Start here'),
-          h('p', { class: 'muted', style: { maxWidth: '64ch' } }, 'Al-Fātiḥah comes first, since every prayer needs it. The short ones after it are the surahs most people learn next.'),
+          h('h2', null, 'Good first surahs to memorize'),
+          h('p', { class: 'muted', style: { maxWidth: '64ch' } }, 'Al-Fātiḥah comes first, since every prayer needs it. Then the short surahs most people learn next.'),
           h('div', { class: 'scard-grid' }, Q.STARTER_SURAHS.slice(0, 6).map(n => index.find(x => x.n === n)).filter(Boolean).map(card)));
 
       const rows = h('div', { class: 'srows' });
@@ -211,18 +211,18 @@
         if (!items.length) rows.append(h('p', { class: 'empty' }, 'No surah matches “' + filter + '”.'));
       };
       const search = h('input', { id: 'surah-search', class: 'input', type: 'search', placeholder: 'Find a surah: name, meaning or number', value: filter, oninput: e => { filter = e.target.value; renderRows(); } });
-      const sortSeg = h('div', { class: 'seg' }, [['short', 'Shortest first'], ['mushaf', 'Mushaf order']].map(([val, label]) =>
-        h('button', { type: 'button', 'aria-pressed': String(sort === val), onclick: e => { sort = val; Q.storage.set('huruf.surahSort', val); sortSeg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === e.currentTarget))); renderRows(); } }, label)));
+      const sortSeg = h('div', { class: 'seg' }, [['mushaf', 'Mushaf order'], ['short', 'Shortest first']].map(([val, label]) =>
+        h('button', { type: 'button', 'aria-pressed': String(sort === val), onclick: e => { sort = val; Q.storage.set('huruf.surahSort2', val); sortSeg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === e.currentTarget))); renderRows(); } }, label)));
       renderRows();
 
       root.replaceChildren(h('div', { class: 'page quran-page' },
         h('div', { class: 'page-head' }, h('div', null,
-          h('h1', null, 'Surahs'),
-          h('p', null, 'Listen, learn one line at a time, then test yourself.'))),
+          h('h1', null, 'Quran'),
+          h('p', null, 'Read and listen to any surah, with transliteration and meaning. Memorize one line at a time.'))),
         reviewCard,
         mine,
         h('section', { class: 'card stack' },
-          h('div', { class: 'card-head' }, h('h2', null, 'All surahs'), h('span', { class: 'small muted' }, 'Al-Fātiḥah and Juz ʿAmma (78–114)')),
+          h('div', { class: 'card-head' }, h('h2', null, 'All 114 surahs')),
           h('div', { class: 'row', style: { justifyContent: 'space-between' } }, search, sortSeg),
           rows)));
     }
@@ -287,7 +287,7 @@
             h('span', { class: 'small' }, `${sum.mem} of ${count} verses memorized`),
             h('button', { class: 'btn sm', type: 'button', onclick: mark }, 'I’ve memorized this surah'));
         head.replaceChildren(
-          h('a', { class: 'back', href: '#surahs' }, '← All surahs'),
+          h('a', { class: 'back', href: '#surahs' }, '← Quran'),
           h('div', { class: 'surah-title' },
             h('div', null,
               h('h1', null, doc.name, h('span', { class: 'ar title-ar' }, doc.ar)),
@@ -296,7 +296,7 @@
       }
 
       function renderTabs() {
-        const tabs = [['listen', '1', 'Listen', 'Hear it, word by word'], ['learn', '2', 'Learn', 'One verse at a time'], ['test', '3', 'Test', 'Check what stuck']];
+        const tabs = [['listen', '1', 'Read', 'Read and listen'], ['learn', '2', 'Memorize', 'One line at a time'], ['test', '3', 'Test', 'Check what stuck']];
         tabsEl.replaceChildren(...tabs.map(([id, num, label, sub]) => h('button', {
           type: 'button', role: 'tab', 'aria-selected': String(tab === id), class: 'qtab',
           onclick: () => { if (tab !== id) { tab = id; store().qSetLast({ n, tab }); renderTabs(); renderBody(); } },

@@ -8,7 +8,7 @@ const NAME = 'Alif';
 // the alif from Scheherazade New (SIL OFL), in a 100x100 box; the same path is inlined in index.html and img/favicon.svg
 const ALIF = 'M56.4 66.9Q56.4 68.9 55.7 71.7Q55.1 74.6 54.2 77.5Q53.2 80.3 52.4 82.2Q51.5 84.1 51.1 84.1Q50.5 84.1 49.7 83.8Q48.9 83.4 48.9 83Q48.9 82.6 49.5 80.8Q50 79 50 74.7Q50 72.8 49.5 69.2Q49 65.5 48.3 60.9Q47.6 56.2 46.8 51.4Q46 46.5 45.2 42.2Q44.5 37.9 44.1 34.9Q43.6 31.8 43.6 30.9Q43.6 28.9 44.7 25.9Q45.7 22.9 47.4 20.1Q49.1 17.3 51 15.9Q51.6 16.9 51.9 18.3Q52.2 19.7 52.2 20.7V25.4Z';
 const mark = `<svg viewBox="0 0 100 100"><path fill="#EAD9A8" d="${ALIF}"/></svg>`;
-const TAGLINE = 'Learn to read the Quran: the letters first, then short surahs by heart. Road to Ramadan.';
+const TAGLINE = 'Read, listen and memorize the Quran, with transliteration and meaning for every word.';
 const root = path.resolve(__dirname, '..');
 const font = 'file://' + path.join(root, 'fonts/uthmanic-hafs.woff2');
 

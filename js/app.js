@@ -8,14 +8,15 @@
 
   /* Four places, nothing hidden behind a menu. Other pages open from inside them:
      Revise from Today and Surahs, the alphabet and keyboard from Letters, Setup from the gear. */
-  const GEAR = ['M12 9.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6z', 'M19.4 13.5l1.6 1.2-1.8 3.1-1.9-.7a7 7 0 0 1-1.6.9l-.3 2H10.6l-.3-2a7 7 0 0 1-1.6-.9l-1.9.7-1.8-3.1 1.6-1.2a7 7 0 0 1 0-1.9L5 10.3l1.8-3.1 1.9.7a7 7 0 0 1 1.6-.9l.3-2h3.6l.3 2a7 7 0 0 1 1.6.9l1.9-.7 1.8 3.1-1.6 1.2a7 7 0 0 1 0 1.9z'];
+  // the settings gear from the Lucide icon set (ISC licence)
+  const GEAR = ['M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z', 'M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z'];
   const ROUTES = [
     { id: 'today', label: 'Today', nav: true, view: () => Q.views.today, icon: ['M4 11l8-7 8 7', 'M6 9.5V20h12V9.5', 'M10 20v-5h4v5'], badge: () => Q.store.qReviseList().length },
-    { id: 'surahs', label: 'Surahs', nav: true, view: () => Q.views.surahs, icon: ['M5 4.5h9.5a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z', 'M8.5 9h6M8.5 12.5h6M8.5 16h3.5'] },
-    { id: 'practice', label: 'Letters', nav: true, view: () => Q.views.practice, icon: ['M4 5h7v6H4z', 'M13 5h7v6h-7z', 'M4 13h7v6H4z', 'M13 13h7v6h-7z'] },
+    { id: 'surahs', label: 'Quran', nav: true, view: () => Q.views.surahs, icon: ['M5 4.5h9.5a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z', 'M8.5 9h6M8.5 12.5h6M8.5 16h3.5'] },
+    { id: 'practice', label: 'Alphabet', nav: true, view: () => Q.views.practice, icon: ['M4 5h7v6H4z', 'M13 5h7v6h-7z', 'M4 13h7v6H4z', 'M13 13h7v6h-7z'] },
     { id: 'progress', label: 'Progress', nav: true, view: () => Q.views.progress, icon: ['M4 20V10', 'M10 20V4', 'M16 20v-7', 'M21 20H3'] },
     { id: 'review', label: 'Revise', parent: 'surahs', view: () => Q.views.review },
-    { id: 'letters', label: 'Alphabet', parent: 'practice', view: () => Q.views.letters },
+    { id: 'letters', label: 'Letters', parent: 'practice', view: () => Q.views.letters },
     { id: 'keyboard', label: 'Keyboard', parent: 'practice', view: () => Q.views.keyboard },
     { id: 'setup', label: 'Setup', parent: 'setup', view: () => Q.views.setup },
   ];
@@ -41,7 +42,7 @@
     return h('nav', { class: 'subtabs', 'aria-label': 'Section' }, items.map(([id, label]) =>
       h('a', { href: '#' + id, 'aria-current': id === current ? 'page' : null }, label)));
   };
-  Q.LETTER_TABS = [['practice', 'Practice'], ['letters', 'Alphabet'], ['keyboard', 'Keyboard']];
+  Q.LETTER_TABS = [['practice', 'Practice'], ['letters', 'All letters'], ['keyboard', 'Keyboard']];
 
   let cleanup = null;
   function render() {
@@ -79,6 +80,7 @@
     const r = Q.ramadan();
     const foot = Q.$('#rail-foot');
     const head = Q.$('#phone-count');
+    if (Q.store.state.settings.countdown === false) { if (head) head.textContent = ''; foot.replaceChildren(); return; }
     if (head) head.textContent = r.phase === 'during' ? `Day ${r.dayOf} of Ramadan` : r.phase === 'tonight' ? 'Ramadan tonight' : `${r.days} ${r.days === 1 ? 'day' : 'days'} to Ramadan`;
     foot.replaceChildren(...(
       r.phase === 'during'
@@ -138,7 +140,7 @@
   let navTimer = null;
   Q.store.onChange(() => {
     clearTimeout(navTimer); navTimer = setTimeout(Q.refreshNav, 200);
-    Q.applyTheme(); Q.applyFont();
+    Q.applyTheme(); Q.applyFont(); railFoot();
     if (Q.store.state.settings.translit !== Q.SCHEME) Q.applyScheme(Q.store.state.settings.translit);
   });
 

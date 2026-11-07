@@ -956,3 +956,7 @@ hr.soft { border: 0; border-top: 1px dashed var(--line); margin: 6px 0; width: 1
   .count-strip { grid-template-columns: auto minmax(0, 1fr); }
   .strip-stats { grid-column: 1 / -1; display: flex; justify-content: space-between; }
 }
+
+.tools-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; padding: 8px; }
+.tools-row a { display: grid; gap: 2px; padding: 12px 14px; border-radius: var(--r-sm); text-decoration: none; color: var(--ink); }
+.tools-row a:hover { background: var(--line-2); }

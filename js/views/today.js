@@ -1,4 +1,4 @@
-/* Alif — Today: countdown, Iqra path, today's numbers, where to start. */
+/* Alif — Today: where to continue, what to revise, and the countdown. */
 (function (Q) {
   'use strict';
   const { h, s } = Q;
@@ -75,11 +75,12 @@
       quranCard.replaceChildren(...kids);
     }).catch(() => quranCard.replaceChildren(h('p', { class: 'empty' }, 'Surahs load when the site is opened from its web address.')));
 
-    /* the letters: today's reading and the letters that still trip you up */
+    /* the alphabet is one tool among others: a full card only once you use it */
+    const usesLetters = Q.store.totals().n > 0;
     const weak = Q.store.weakest(5, 3).filter(x => x.m < 0.8);
     const goalPct = Math.min(1, today.n / goal);
-    const lettersCard = h('section', { class: 'card next-card' },
-      h('div', { class: 'eyebrow' }, 'Letters'),
+    const lettersCard = !usesLetters ? null : h('section', { class: 'card next-card' },
+      h('div', { class: 'eyebrow' }, 'Alphabet'),
       h('h2', null, today.n >= goal ? 'Goal reached today' : today.n ? `${goal - today.n} letters to today’s goal` : 'Read some letters today'),
       h('div', { class: 'bar', role: 'progressbar', 'aria-valuenow': Math.round(goalPct * 100), 'aria-valuemin': 0, 'aria-valuemax': 100 }, h('i', { style: { width: (goalPct * 100) + '%' } })),
       weak.length
@@ -89,9 +90,14 @@
         h('a', { class: 'btn primary lg', href: '#practice', onclick: () => { if (Q.store.state.practice.focus === 'weak' && !weak.length) Q.store.setPractice('focus', 'all'); } }, today.n ? 'Keep practising' : 'Start practice'),
         weak.length ? h('button', { class: 'btn', type: 'button', onclick: () => { Q.store.setPractice('focus', 'weak'); Q.go('practice'); } }, 'Practise the tricky ones') : null));
 
+    const tools = h('section', { class: 'card tools-row' },
+      !usesLetters ? h('a', { href: '#practice' }, h('b', null, 'Learn the Arabic letters'), h('span', { class: 'small muted' }, 'Read the Quran without transliteration, one letter at a time')) : null,
+      h('a', { href: '#review' }, h('b', null, 'Revise'), h('span', { class: 'small muted' }, 'Recite surahs you know')),
+      h('a', { href: '#progress' }, h('b', null, 'Your progress'), h('span', { class: 'small muted' }, 'Streak, surahs and stats')));
+
     /* countdown and streak, one line */
     const days = r.phase === 'during' ? `Day ${r.dayOf} of Ramadan` : r.phase === 'tonight' ? 'Ramadan begins tonight' : `${r.days} ${r.days === 1 ? 'day' : 'days'} until Ramadan`;
-    const strip = h('section', { class: 'card count-strip' },
+    const strip = st.settings.countdown === false ? null : h('section', { class: 'card count-strip' },
       h('div', { class: 'ayah-num sm' }, ornament(), h('span', { class: 'n num' }, r.phase === 'during' ? r.dayOf : r.days)),
       h('div', { class: 'stack', style: { gap: '2px' } },
         h('b', null, days),
@@ -103,7 +109,8 @@
     root.append(h('div', { class: 'page' },
       head,
       welcomeCard(),
-      h('div', { class: 'grid cols-2 next-grid' }, quranCard, lettersCard),
+      lettersCard ? h('div', { class: 'grid cols-2 next-grid' }, quranCard, lettersCard) : quranCard,
+      tools,
       strip));
   };
   /* First visit: what this is, where to begin, and where progress is kept. Goes away once dismissed. */
@@ -118,7 +125,7 @@
         h('h2', null, 'Welcome'),
         h('button', { class: 'btn ghost sm', type: 'button', onclick: close }, 'Hide')),
       h('p', { style: { color: 'var(--ink-2)', maxWidth: '68ch' } },
-        'Learn to read the Quran and memorize it, even if you don’t read Arabic yet: every word comes with its transliteration and meaning. Start with a surah or with the letters below.'),
+        'Read, listen and memorize the Quran, even if you don’t read Arabic yet: every word comes with its transliteration and meaning, and lights up as the reciter says it.'),
       h('div', { class: 'welcome-foot' },
         h('p', { class: 'small muted' }, 'Free, no account. Your progress stays on this device.'),
         h('div', { class: 'row', style: { gap: '8px' } }, h('span', { class: 'small muted' }, 'Spelling'), Q.schemeSwitch())));

@@ -6,9 +6,21 @@
 
   const pad = (n, l = 3) => String(n).padStart(l, '0');
 
+  /* Every recitation on Quran.com: all have word timings, so the words light up as they are recited.
+     qcom = Quran.com recitation id; everyayah = backup folder when Quran.com's files don't load */
   Q.RECITERS = [
-    { id: 'husary', label: 'Al-Ḥuṣarī', sub: 'Murattal · steady pace', everyayah: 'Husary_128kbps', qcom: 6 },
-    { id: 'muallim', label: 'Al-Ḥuṣarī · teaching', sub: 'Muʿallim · slow, made for learners', everyayah: 'Husary_Muallim_128kbps', qcom: 12 },
+    { id: 'husary', label: 'Al-Ḥuṣarī', sub: 'steady and clear', everyayah: 'Husary_128kbps', qcom: 6 },
+    { id: 'muallim', label: 'Al-Ḥuṣarī · teaching', sub: 'slow, made for learners', everyayah: 'Husary_Muallim_128kbps', qcom: 12 },
+    { id: 'minshawi', label: 'Al-Minshāwī', sub: 'murattal', everyayah: 'Minshawy_Murattal_128kbps', qcom: 9 },
+    { id: 'minshawi-mj', label: 'Al-Minshāwī', sub: 'mujawwad, melodic and slow', everyayah: 'Minshawy_Mujawwad_192kbps', qcom: 8 },
+    { id: 'abdulbasit', label: 'ʿAbd al-Bāsiṭ ʿAbd aṣ-Ṣamad', sub: 'murattal', everyayah: 'Abdul_Basit_Murattal_192kbps', qcom: 2 },
+    { id: 'abdulbasit-mj', label: 'ʿAbd al-Bāsiṭ ʿAbd aṣ-Ṣamad', sub: 'mujawwad, melodic and slow', everyayah: 'Abdul_Basit_Mujawwad_128kbps', qcom: 1 },
+    { id: 'afasy', label: 'Mishārī al-ʿAfāsī', sub: 'murattal', everyayah: 'Alafasy_128kbps', qcom: 7 },
+    { id: 'sudais', label: 'ʿAbd ar-Raḥmān as-Sudais', sub: 'imam of the Grand Mosque, Makkah', everyayah: 'Abdurrahmaan_As-Sudais_192kbps', qcom: 3 },
+    { id: 'shuraym', label: 'Saʿūd ash-Shuraym', sub: 'imam of the Grand Mosque, Makkah', everyayah: 'Saood_ash-Shuraym_128kbps', qcom: 10 },
+    { id: 'shatri', label: 'Abū Bakr ash-Shāṭirī', sub: 'murattal', everyayah: 'Abu_Bakr_Ash-Shaatree_128kbps', qcom: 4 },
+    { id: 'rifai', label: 'Hānī ar-Rifāʿī', sub: 'murattal', everyayah: 'Hani_Rifai_192kbps', qcom: 5 },
+    { id: 'tablawi', label: 'Muḥammad aṭ-Ṭablāwī', sub: 'murattal', everyayah: 'Mohammad_al_Tablaway_128kbps', qcom: 11 },
   ];
   Q.RECITER = Object.fromEntries(Q.RECITERS.map(r => [r.id, r]));
   Q.BASMALA = 'بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ';
@@ -33,7 +45,7 @@
       const res = await fetch(Q.asset(`data/quran/${n}.json`));
       if (!res.ok) throw new Error('Could not load this surah');
       const doc = await res.json();
-      doc.verses.forEach((v, i) => { v.n = i + 1; v.key = n + ':' + (i + 1); v.words = v.ar.split(' '); });
+      doc.verses.forEach((v, i) => { v.n = i + 1; v.key = n + ':' + (i + 1); v.words = v.words || v.ar.split(' '); });
       doc._tr = {};
       docs[n] = doc;
       return doc;
@@ -235,7 +247,9 @@
       if (t && t[v] && t[v].url) clips.push({ src: t[v].url, start: t[v].start, end: t[v].end, seg: t[v].seg, est });
       clips.push({ src: everyAyah(r, n, v), est });
       if (r.id === 'husary') clips.push({ src: `https://verses.quran.com/Husary/mp3/${pad(n)}${pad(v)}.mp3`, est });
-      return play(clips, onWord);
+      // a few verses split words differently from Quran.com's timings: map its word numbers to ours
+      const map = docs[n] && docs[n].verses[v - 1] && docs[n].verses[v - 1].qmap;
+      return play(clips, map && onWord ? (w, p) => onWord(w >= 0 && map[w] != null ? map[w] : w, p) : onWord);
     },
     /* the Bismillah before a surah: Al-Fātiḥah's first verse, with its word timings */
     async basmala(reciterId, onWord) {
@@ -252,9 +266,11 @@
        a cut from the reciter's verse only if that recording is missing. No highlight sweep. */
     async word(n, v, w, reciterId) {
       const r = Q.RECITER[reciterId] || Q.RECITERS[0];
-      const clips = [{ src: `https://audio.qurancdn.com/wbw/${pad(n)}_${pad(v)}_${pad(w + 1)}.mp3` }];
+      const map = docs[n] && docs[n].verses[v - 1] && docs[n].verses[v - 1].qmap;
+      const qw = map ? Math.max(0, map.indexOf(w)) : w;      // Quran.com's number for this word
+      const clips = [{ src: `https://audio.qurancdn.com/wbw/${pad(n)}_${pad(v)}_${pad(qw + 1)}.mp3` }];
       const t = await timings(n, r.id);
-      const s = t && t[v] && t[v].seg && t[v].seg.find(x => x.w === w);
+      const s = t && t[v] && t[v].seg && t[v].seg.find(x => x.w === qw);
       if (s && t[v].url) clips.push({ src: t[v].url, start: Math.max(0, s.start - 40) / 1000, end: (s.end + 60) / 1000 });
       return play(clips);
     },
